@@ -44,8 +44,18 @@ public class EmployeeController {
         Employee employee = employeeService.login(employeeLoginDTO);
 
         //登录成功后，生成jwt令牌
+        // JWT（JSON Web Token）是一种用于身份认证和信息传递的令牌格式
+        // JWT 通常由三部分组成  Header.Payload.Signature
+        // Header：说明令牌类型和签名算法
+        // Payload：保存用户编号、身份、过期时间等信息
+        // Signature：服务器根据密钥生成的签名，用于防止令牌被篡改
+
+        // claims 可以理解为“准备写入令牌的信息”
+        // 创建保存信息的 Map
         Map<String, Object> claims = new HashMap<>();
+        // 把员工 ID 放进去（键值对）
         claims.put(JwtClaimsConstant.EMP_ID, employee.getId());
+        // 根据三个参数生成令牌
         String token = JwtUtil.createJWT(
                 jwtProperties.getAdminSecretKey(),
                 jwtProperties.getAdminTtl(),
