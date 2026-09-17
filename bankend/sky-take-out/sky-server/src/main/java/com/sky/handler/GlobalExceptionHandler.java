@@ -3,6 +3,7 @@ package com.sky.handler;
 import com.sky.exception.BaseException;
 import com.sky.result.Result;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.xmlbeans.impl.xb.xsdschema.Public;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -26,4 +27,5 @@ public class GlobalExceptionHandler {
         return Result.error(ex.getMessage());
     }
 
+    
 }
