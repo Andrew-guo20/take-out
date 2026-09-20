@@ -11,7 +11,9 @@ import java.util.List;
  * 封装分页查询结果
  */
 @Data
+// 有参构造方法
 @AllArgsConstructor
+// 午餐构造方法
 @NoArgsConstructor
 public class PageResult implements Serializable {
 
