@@ -14,7 +14,6 @@ public interface EmployeeMapper {
     /**
      * 根据用户名查询员工
      * @param username
-     * @return
      */
     // 告诉 MyBatis，这个方法执行括号中的查询语句
     // sql比较简短用逐渐，复杂用yaml
@@ -34,7 +33,6 @@ public interface EmployeeMapper {
     /**
      * 员工分页查询
      * @param employeePageQueryDTO
-     * @return
      */
     // SQL写在了映射文件
     Page<Employee> pageQuery(EmployeePageQueryDTO employeePageQueryDTO);
@@ -44,4 +42,12 @@ public interface EmployeeMapper {
      * @param employee
      */
     void update(Employee employee);
+
+    /**
+     * 根据id查询
+     * @param id
+     * @return
+     */
+    @Select("select * from employee where id = #{id}")
+    Employee getById(long id);
 }

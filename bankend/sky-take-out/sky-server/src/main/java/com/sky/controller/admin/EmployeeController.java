@@ -125,9 +125,22 @@ public class EmployeeController {
     @PostMapping("/status/{status}")
     @ApiOperation("启用禁用员工账号")
     // 路径参数要加 PathVariable
+    // 当前请求形式 POST /admin/employee/status/1?id=10 id是请求参数
     public Result startOrStop(@PathVariable Integer status,Long id){
         log.info("启用禁用员工账号：{},{}",status,id);
         employeeService.startOrStop(status,id);
         return Result.success();
+    }
+
+    /**
+     * 根据id查询员工信息
+     * @param id
+     * @return
+     */
+    @GetMapping("/{id}")
+    @ApiOperation("根据id查询员工信息")
+    public Result<Employee> getById(@PathVariable long id){
+        Employee employee = employeeService.getById(id);
+        return Result.success(employee);
     }
 }
