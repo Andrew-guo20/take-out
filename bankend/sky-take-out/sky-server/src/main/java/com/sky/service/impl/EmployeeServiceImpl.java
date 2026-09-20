@@ -118,4 +118,25 @@ public class EmployeeServiceImpl implements EmployeeService {
         return new PageResult(total,records);
     }
 
+    /**
+     * 启用禁用员工账号
+     * @param status
+     * @param id
+     */
+    @Override
+    public void startOrStop(Integer status, Long id) {
+        // update employee set status = ? where id = ?
+        // 为了扩展更新语句的作用范围，不只是更新 status、id，创建一个实体类，使用map的动态语句来实现
+        /*Employee employee = new Employee();
+        employee.setStatus(status);
+        employee.setId(id);*/
+
+        Employee employee = Employee.builder()
+                .status(status)
+                .id(id)
+                .build();
+
+
+        employeeMapper.update(employee);
+    }
 }
