@@ -1,0 +1,16 @@
+mysql 安装配置教程：
+https://blog.csdn.net/weixin_46528266/article/details/156311858
+
+如果初始化MySQL服务阶段，忘记了临时密码，解决步骤如下：
+1. 以管理员身份打开命令提示符（cmd   mysql的安装路径  /bin）
+2.停止 MySQL 服务	
+	net stop MySQL80
+3. 创建密码重置文件，单独一行写入一下内容（请确保保存文件时，其编码格式为 ANSI，否则 MySQL 可能无法正确读取。）
+	ALTER USER 'root'@'localhost' IDENTIFIED BY '你的新密码';
+4. 使用重置文件启动 MySQL（文件路径中的反斜杠 \ 需要写成两个 \\）
+	mysqld --init-file=C:\\mysql-init.txt
+5.验证新密码（保持上述窗口运行，另开一个“管理员:命令提示符”窗口，尝试用新密码登录）
+
+MySQL80 密码：NewPassword123!
+
+root@localhost: q6OHk4l84s!i

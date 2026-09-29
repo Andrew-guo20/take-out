@@ -27,3 +27,4 @@ workbox.core.setCacheNameDetails({prefix: "vue-typescript-admin-template"});
 self.__precacheManifest = [].concat(self.__precacheManifest || []);
 workbox.precaching.suppressWarnings();
 workbox.precaching.precacheAndRoute(self.__precacheManifest, {});
+// patched: flavor dropdown selection triggers on mousedown

@@ -4,3 +4,7 @@
 *.class
 *Test.java
 **/test/
+
+# 本地开发配置包含真实密钥，不进版本库
+application-dev.yml
+take-out-learn.txt
