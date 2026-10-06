@@ -1,0 +1,176 @@
+完善登录功能
+问题：员工表中的密码是明文存储，安全性太低
+解决思路：①将密码加密存储，提高安全性
+ 		   ②使用MD5加密方式对明文密码加密
+1.修改数据库中明文密码，改为MD5加密后的密文
+2.修改java代码，前端提交的密码进行MD5加密后再跟数据库中密码比对 -- DigestUtils.md5DigestAsHex
+
+导入接口文档（apifox）
+1.前后端分离开发流程
+2.导入接口文档：资料提供的是Yapi的json格式文档，在主窗口直接选择导入项目，切换到Yapi
+
+Swagger（生成接口文档以及在线接口测试）
+使用方式：1.导入knife4j的maven坐标
+		   2.在配置类中加入knife4相关配置 -- WebMvcConfiguration
+		   3.设置静态资源映射，否则接口文档页面无法访问
+常用注解：通过注解可以控制生成的接口文档，使接口文档拥有更好的可读性
+1.Yapi/apifox是设计阶段使用的工具，管理和维护接口
+2.Swagger在开发阶段使用的框架，帮助后端开发人员做后端的接口测试
+
+
+新增员工
+1.需求分享和设计 
+  接口设计、数据表设计
+2.代码开发
+①根据新增员工接口设计对应的DTO（当前端提交的数据和实体类中对应的属性差别比较大时，建议使用DTO封装数据）
+3.功能测试
+①通过接口文档测试
+②通过前后端联调测试
+4.代码完善
+①录入的用户名已存在，抛出异常后没有处理
+②新增员工时，创建人id和修改人id设置为了固定值
+   ThreadLocal 并不是一个Thread，而是Thread的局部变量；
+   ThreadLocal为每个线程提供单独一份存储空间，具有线程隔离的效果，只有在线程内才能获取到对应的值，线程外则不能访问。
+
+员工分页查询
+1.需求分析和设计 
+  业务规则：①根据页码展示员工信息
+		     ②每页展示10条数据
+		     ③分页查询时可以根据需要，输入员工姓名进行查询
+ 接口设计
+2.代码开发：根据分页查询接口设计对应的DTO
+3.功能测试
+4.代码完善：后端返回时间字段格式不符合实际情况
+解决方式：①在属性上加入注解，对日期进行格式化
+		   ②在 WebMvcConfiguration 中扩展Spring MVC的消息转换器，统一对日期类型进行格式化处理 （java -> json 序列化）
+
+启用禁用员工账号
+1.需求分析和设计
+业务规则：①对状态为‘启用’的员工账号进行‘禁用’操作
+		   ②对状态为‘禁用’的员工账号进行‘启用’操作
+		   ③状态为‘禁用’的员工账号不能登录系统
+
+编辑员工
+1.需求分析和设计
+设计两个接口：①根据id查询员工信息
+		          ②编辑员工信息
+
+导入分类模块功能代码
+1.需求分析和设计
+  业务规则：①分类名称必须是唯一的
+		     ②分类按照类型可以分为菜品分类和套餐分类
+		     ③新添加的分类状态默认为‘禁用’
+
+公共字段自动填充
+1.问题分析：多张业务表都存在create_time、create_user、update_time、update_user 这些公共字段，每次修改都需要公共字段进行赋值，导致代码冗余，不方便维护
+2.实现思路：通过切面（AOP），来统一处理
+   ①自定义注解AutoFill，用于标识需要进行公共字段自动填充的方法
+   ②自定义切面类 AutoFillAspect，统一拦截加入了AutoFill注解的方法，通过反射为公共字段赋值
+   ③在Mapper的方法上加入AutoFill注解
+3.代码开发：
+
+新增菜品
+1.需求分析和设计
+业务规则：①菜品名称必须是唯一的
+		  ②菜品必须属于某个分类下，不能单独存在
+		  ③新增菜品时可以根据情况选择菜品的口味
+		  ④每个菜品必须对应一张图片
+接口设计：①根据类型查询分类
+		  ②文件上传   要在请求头里 设置content-type multipart/form-data
+		  ③新增菜品
+数据库设计：
+2.代码开发
+
+新建阿里云OSS：
+1.创建AccessKey:支付宝登录，选择对象存储OSS - 试用版，找到 “RAM访问控制台”，左侧身份管理 - 用户 - 创建用户，填登录名称，创建完后保存 AccessKey ID 和 Secret，然后新增权限，搜索`AliyunOSSFullAccess`并授权
+2.创建Bucket：进入对象存储 OSS控制，左侧Bucket列表，创建Bucket
+ 名称(bucket-name)：andrew-sky-take-out-file
+ 地域节点(endpoint)：oss-cn-hangzhou.aliyuncs.com
+阿里云:
+登录名称：andrew
+AccessKey ID : 你的AccessKeyID
+AccessKey Secret : 你的AccessKeySecret
+
+菜品分页查询
+1.需求分析和设计
+ 业务规则：①根据页码展示菜品信息
+		   ②每页展示10条数据
+ 		   ③分页查询时可以根据需要输入菜品名称、菜品分类、菜品状态进行查询
+
+删除菜品
+1.需求分析和设计
+ 业务规则：①可以一次删除一个菜品，也可以批量删除菜品 -- 设计一个批量删除的接口（单个的包括其中）
+ 		   ②起售中的菜品不能删除
+		   ③被套餐关联的菜品不能删除
+		   ④删除菜品后，关联的口味数据也需要删除掉
+
+
+修改菜品：
+1.需求分析和设计
+接口设计：①根据id查询菜品
+		  ②根据类型查询分类（已实现）
+		  ③文件上传（已实现）
+		  ④修改菜品
+
+店铺营业状态设置
+Redis简介：redis是一个基于内存的 key-value 结构数据库
+		    ①基于内存存储，读写性能高
+		    ②适合存储热点数据（热点商品、资讯、新闻）
+		    ③企业应用广泛
+redis-windows 下载地址 https://github.com/redis-windows/redis-windows/releases
+Another-Redis-Desktop 下载地址 https://github.com/qishibo/AnotherRedisDesktopManager/releases
+启动redis服务  redis-server.exe redis.conf    
+停止redis服务 ctrl + c
+连接redis服务 redis-cli.exe -h localhost -p 6379  -a 123456（-h 制定服务地址 -p 制定端口号 -a 指定密码）
+配置文件redis.conf 搜索requirepass 修改redis 登录密码123456 
+
+Redis常见数据类型（key-value 其中key是字符串类型，value有五种常见数据类型）
+字符串 string、
+哈希 hash （也叫散列，一个string类型的field和value的映射表，hash特别适合用于存储对象）
+列表 list（按照插入顺序，可以有重复元素，类似于java中的	LinkedList  朋友圈点赞）、
+集合 set（无序集合，没有重复元素，类似于java的HashSet  进行运算，算交集）、
+有序集合 sorted set/z set（集合中每个元素关联一个分数-score，每个元素都会关联一个double类型的分数，根据分数升序排序，没有重复元素  排行榜、投票榜）
+
+Redis操作命令
+字符串操作命令：
+SET key value 设置指定key的值
+GET key  		获取制定key的值
+SETEX key seconds value 设置制定key的值，并将key的过期时间设为seconds秒
+SETNX key value 只有在key不存在时设置key的值
+
+哈希操作命令
+HSET key field value   将哈希表key中的字段field的值设为value
+HGET key field   	     获取存储在哈希表中指定字段的值
+HDEL key field 	     删除存储在哈希表中的制定字段
+HKEYS key		     获取哈希表中所有字段
+HVALS key		     获取哈希表中所有值
+
+列表操作命令
+LPUSH key value1 [value2]	将一个或多个值插入到列表头部
+LRANGE key start stop	获取列表指定范围内的元素
+RPOP key 				移除并获取列表最后一个元素
+LLEN key 				获取列表长度
+
+
+集合操作命令 
+SADD key member1 [member2]	向集合添加一个或多个成员
+SMEMBERS key				返回集合中的所有成员
+SCARD key					获取集合的成员数
+SINTER key1 [key2]			返回给定所有集合的交集
+SUNION key1 [key2]			返回所有给定集合的并集
+SREM key member1 [member2]	删除集合中一个或者多个成员
+
+有序集合操作命令
+ZADD key score1 member1 [score2 member2]	向有序集合添加一个或多个成员
+ZRANGE key start stop [WITHSCORES] 		通过索引区间返回有序集合中指定区间内的成员
+ZINCRBY key increment member 			有序集合中对指定成员的分数加上增量increment
+ZREM key member [member]				移除有序集合中的一个或多个成员
+
+通用命令（不分数据类型的，都可以使用的命令）
+KEYS pattern	查找所有符合给定模式（pattern）的key
+EXISTS key 	检查给定key是否存在
+TYPE key		返回key所存储的值的类型
+DEL key		该命令用于在key存在时删除key
+
+在Java中操作Redis
+常见 Redis 的Java客户端：Jedis、Lettuce、Spring Data Redis（是Spring的一部分，对Redis底层开发包进行了高度封装，在spring项目中，可以使用 Spring Data Redis来简化操作）
