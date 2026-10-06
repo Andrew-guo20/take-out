@@ -174,3 +174,14 @@ DEL key		该命令用于在key存在时删除key
 
 在Java中操作Redis
 常见 Redis 的Java客户端：Jedis、Lettuce、Spring Data Redis（是Spring的一部分，对Redis底层开发包进行了高度封装，在spring项目中，可以使用 Spring Data Redis来简化操作）
+
+店铺营业状态设置
+1.需求分析和设计
+ 接口设计：①设置营业状态
+		   ②管理端查询营业状态
+		   ③用户端查询营业状态
+ 本项目约定：
+ 管理端 发出的请求，统一使用 /admin	作为前缀
+ 用户端 发出的请求，统一使用 /user 作为前缀
+ 营业状态数据存储方式：基于Redis的字符串来进行存储（1表示营业、0表示打烊）
+2.代码开发
