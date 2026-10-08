@@ -194,3 +194,27 @@
   border-width: 0 !important;
 }
 
+/* 新版头像昵称填写能力：去掉 button 默认样式，头像保持圆形 */
+.my-center .my_info .head .head_btn.data-v-0be17cc6 {
+  padding: 0;
+  margin: 20rpx auto;
+  width: 116rpx;
+  height: 116rpx;
+  line-height: 116rpx;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  display: block;
+}
+.my-center .my_info .head .head_btn.data-v-0be17cc6::after {
+  border: none;
+}
+.my-center .my_info .head .head_btn.data-v-0be17cc6 .head_image.data-v-0be17cc6 {
+  margin: 0;
+}
+.my-center .my_info .phone_name .name .name_text.data-v-0be17cc6 {
+  display: inline-block;
+  width: 240rpx;
+  vertical-align: middle;
+}
+

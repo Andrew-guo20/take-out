@@ -88,8 +88,8 @@ Swagger（生成接口文档以及在线接口测试）
  地域节点(endpoint)：oss-cn-hangzhou.aliyuncs.com
 阿里云:
 登录名称：andrew
-AccessKey ID : 你的AccessKeyID
-AccessKey Secret : 你的AccessKeySecret
+AccessKey ID : <ACCESS_KEY_ID>
+AccessKey Secret : <ACCESS_KEY_SECRET>
 
 菜品分页查询
 1.需求分析和设计

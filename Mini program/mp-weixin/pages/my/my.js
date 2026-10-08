@@ -335,7 +335,7 @@ var _index = __webpack_require__(/*! @/utils/index.js */ 29);function _interopRe
 
   },
   methods: _objectSpread(_objectSpread({},
-  (0, _vuex.mapMutations)(['setAddressBackUrl'])), {}, {
+  (0, _vuex.mapMutations)(['setAddressBackUrl', 'setBaseUserInfo'])), {}, {
     // <!-- 1待付款 2待接单 3 已接单 4 派送中 5 已完成 6 已取消 7 退款 -->
     numes: function numes(list) {
       var count = 0;
@@ -348,6 +348,33 @@ var _index = __webpack_require__(/*! @/utils/index.js */ 29);function _interopRe
     },
     statusWord: function statusWord(status, time) {
       return (0, _index.statusWord)(status, time);
+    },
+    // 新版头像昵称填写能力：chooseAvatar 按钮 + nickname 输入框
+    onChooseAvatar: function onChooseAvatar(e) {
+      var _this = this;
+      var tempPath = e.detail.avatarUrl;
+      this.psersonUrl = tempPath;
+      (0, _api.uploadAvatar)(tempPath).then(function (url) {
+        _this.psersonUrl = url;
+        var info = _this.$store.state.baseUserInfo || {};
+        info.avatarUrl = url;
+        _this.setBaseUserInfo(info);
+        return (0, _api.updateUserInfo)({ avatar: url });
+      }).catch(function (err) {
+        uni.showToast({ title: '头像上传失败', icon: 'none' });
+      });
+    },
+    onNicknameBlur: function onNicknameBlur(e) {
+      var _this = this;
+      var nick = e.detail.value;
+      if (!nick) { return; }
+      this.nickName = nick;
+      var info = this.$store.state.baseUserInfo || {};
+      info.nickName = nick;
+      this.setBaseUserInfo(info);
+      (0, _api.updateUserInfo)({ name: nick }).catch(function (err) {
+        uni.showToast({ title: '昵称保存失败', icon: 'none' });
+      });
     },
     getOvertime: function getOvertime(time) {
       return (0, _index.getOvertime)(time);

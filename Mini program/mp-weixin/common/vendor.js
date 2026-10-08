@@ -4291,39 +4291,28 @@ var _index = __webpack_require__(/*! ../../utils/index.js */ 29);function _inter
           showCancel: false,
           success: function success(res) {
             if (res.confirm) {
-              var jsCode = '';
+              // 新版登录：废弃 getUserProfile，直接用 uni.login 换取 code 完成登录
               uni.login({
                 provider: 'weixin',
                 success: function success(loginRes) {
                   if (loginRes.errMsg === 'login:ok') {
-                    console.log('-=-=-=-=loginRes-=-=-=', loginRes);
-                    jsCode = loginRes.code;
+                    (0, _api.userLogin)({ code: loginRes.code }).then(function (success) {
+                      if (success.code === 1) {
+                        _this.setToken(success.data.token);
+                        if (success.data.name || success.data.avatar) {
+                          _this.setBaseUserInfo({
+                            nickName: success.data.name || '',
+                            avatarUrl: success.data.avatar || '',
+                            gender: '0' });
+                        }
+                        _this.init();
+                      }
+                    }).catch(function (err) {
+                      uni.showToast({ title: '登录失败，请稍后重试', icon: 'none' });
+                    });
+                  } else {
+                    uni.showToast({ title: '微信登录失败，请稍后重试', icon: 'none' });
                   }
-                } });
-
-              // 授权
-              uni.getUserProfile({
-                desc: '登录',
-                success: function success(userInfo) {
-                  _this.setBaseUserInfo(userInfo.userInfo);
-                  var params = {
-                    // phone: jsCode,
-                    // avatar: userInfo.userInfo.avatarUrl,
-                    // name: userInfo.userInfo.nickName,
-                    // sex: userInfo.userInfo.gender,
-                    code: jsCode };
-
-                  console.log(userInfo.userInfo, 11);
-                  (0, _api.userLogin)(params).then(function (success) {
-                    if (success.code === 1) {
-
-                      _this.setToken(success.data.token);
-                      _this.init();
-                    }
-                  }).catch(function (err) {});
-                },
-                fail: function fail(err) {
-
                 } });
 
             }
@@ -20048,7 +20037,33 @@ exports.payOrder = payOrder;var userLogin = function userLogin(params) {
 };
 
 // 菜品和套餐的分类
-exports.userLogin = userLogin;var getCategoryList = function getCategoryList(params) {
+exports.userLogin = userLogin;var _store = __webpack_require__(/*! ../../utils/store */ 12);var _env = __webpack_require__(/*! ../../utils/env */ 26);var updateUserInfo = function updateUserInfo(params) {
+  return (0, _request.request)({
+    url: '/user/user/update',
+    method: 'POST',
+    params: params });
+};
+
+// 更新用户头像昵称
+exports.updateUserInfo = updateUserInfo;var uploadAvatar = function uploadAvatar(filePath) {
+  return new Promise(function (resolve, reject) {
+    uni.uploadFile({
+      url: _env.baseUrl + '/user/common/upload',
+      filePath: filePath,
+      name: 'file',
+      header: { 'authentication': _store.default.state.token },
+      success: function success(res) {
+        var data = {};
+        try { data = JSON.parse(res.data); } catch (e) { data = res.data; }
+        if (data.code === 1) { resolve(data.data); } else { reject(data); }
+      },
+      fail: function fail(err) { reject(err); }
+    });
+  });
+};
+
+// 上传头像
+exports.uploadAvatar = uploadAvatar;var getCategoryList = function getCategoryList(params) {
   return (0, _request.request)({
     url: '/user/category/list',
     method: 'GET',

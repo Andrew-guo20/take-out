@@ -2,6 +2,7 @@ package com.sky.controller.user;
 
 import com.sky.constant.JwtClaimsConstant;
 import com.sky.dto.UserLoginDTO;
+import com.sky.dto.UserUpdateDTO;
 import com.sky.entity.User;
 import com.sky.properties.JwtProperties;
 import com.sky.result.Result;
@@ -52,7 +53,22 @@ public class UserController {
                 .id(user.getId())
                 .openid(user.getOpenid())
                 .token(token)
+                .name(user.getName())
+                .avatar(user.getAvatar())
                 .build();
         return Result.success(userLoginVo);
+    }
+
+    /**
+     * 更新用户信息
+     * @param userUpdateDTO
+     * @return
+     */
+    @PostMapping("/update")
+    @ApiOperation("更新用户信息")
+    public Result update(@RequestBody UserUpdateDTO userUpdateDTO){
+        log.info("更新用户信息：{}", userUpdateDTO);
+        userService.update(userUpdateDTO);
+        return Result.success();
     }
 }

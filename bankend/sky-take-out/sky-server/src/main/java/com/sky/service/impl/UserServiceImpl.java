@@ -3,7 +3,9 @@ package com.sky.service.impl;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.sky.constant.MessageConstant;
+import com.sky.context.BaseContext;
 import com.sky.dto.UserLoginDTO;
+import com.sky.dto.UserUpdateDTO;
 import com.sky.entity.User;
 import com.sky.exception.LoginFailedException;
 import com.sky.mapper.UserMapper;
@@ -61,6 +63,21 @@ public class UserServiceImpl implements UserService {
 
         // 5. 返回这个用户对象
         return user;
+    }
+
+    /**
+     * 更新用户信息
+     *
+     * @param userUpdateDTO
+     */
+    @Override
+    public void update(UserUpdateDTO userUpdateDTO) {
+        User user = User.builder()
+                .id(BaseContext.getCurrentId())
+                .name(userUpdateDTO.getName())
+                .avatar(userUpdateDTO.getAvatar())
+                .build();
+        userMapper.update(user);
     }
 
     /**

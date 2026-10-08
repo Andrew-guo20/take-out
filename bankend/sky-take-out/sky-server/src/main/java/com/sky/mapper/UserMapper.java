@@ -17,6 +17,13 @@ public interface UserMapper {
     User getByOpenid(String openid);
 
     /**
+     * 更新用户数据
+     *
+     * @param user
+     */
+    void update(User user);
+
+    /**
      * 插入用户数据
      *
      * @param user
