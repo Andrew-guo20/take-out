@@ -1,7 +1,9 @@
 package com.sky.controller.admin;
 
+import com.sky.constant.StatusConstant;
 import com.sky.dto.DishDTO;
 import com.sky.dto.DishPageQueryDTO;
+import com.sky.entity.Dish;
 import com.sky.result.PageResult;
 import com.sky.result.Result;
 import com.sky.service.DishService;
@@ -10,6 +12,7 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -70,6 +73,13 @@ public class DishController {
         return Result.success(pageResult);
     }
 
+    @GetMapping("/list")
+    @ApiOperation("条件查询已启售菜品")
+    public Result<List<DishVO>> list(Dish dish){
+        dish.setStatus(StatusConstant.ENABLE);
+        return Result.success(dishService.listWithFlavor(dish));
+    }
+
     /**
      * 根据id查询菜品
      * @param id
@@ -123,6 +133,7 @@ public class DishController {
      */
     @PostMapping("/status/{status}")
     @ApiOperation("菜品起售停售")
+    @CacheEvict(cacheNames = "setmealCache", allEntries = true, condition = "#status == 0")
     public Result<String> startOrStop(@PathVariable Integer status, Long id){
         log.info("菜品起售停售：{} {}", status, id);
         dishService.startOrStop(status, id);
