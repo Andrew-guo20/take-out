@@ -26,6 +26,16 @@ public class ShoppingCartController {
     private ShoppingCartService shoppingCartService;
 
     /**
+     * 减少购物车中菜品或套餐的数量。
+     */
+    @PostMapping("/sub")
+    @ApiOperation("减少购物车商品数量")
+    public Result sub(@RequestBody ShoppingCartDTO shoppingCartDTO) {
+        shoppingCartService.subShoppingCart(shoppingCartDTO);
+        return Result.success();
+    }
+
+    /**
      * 清空当前登录用户的购物车。
      */
     @DeleteMapping("/clean")

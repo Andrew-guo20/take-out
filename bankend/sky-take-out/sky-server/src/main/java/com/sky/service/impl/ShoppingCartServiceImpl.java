@@ -25,6 +25,31 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     private SetmealMapper setmealMapper;
 
     /**
+     * 减少当前用户购物车的商品数量，最后一份商品直接删除。
+     */
+    @Override
+    public void subShoppingCart(ShoppingCartDTO shoppingCartDTO) {
+        // 沿用添加购物车的匹配规则，区分用户、菜品口味和套餐。
+        ShoppingCart shoppingCart = ShoppingCart.builder()
+                .userId(BaseContext.getCurrentId())
+                .dishId(shoppingCartDTO.getDishId())
+                .setmealId(shoppingCartDTO.getSetmealId())
+                .dishFlavor(shoppingCartDTO.getDishFlavor())
+                .build();
+        ShoppingCart existing = shoppingCartMapper.getByProduct(shoppingCart);
+        if (existing == null) {
+            return;
+        }
+        if (existing.getNumber() > 1) {
+            // 数量大于 1 时减一，不修改商品信息。
+            shoppingCartMapper.decrementNumber(existing.getId());
+        } else {
+            // 只剩一份时删除记录，避免保留数量为 0 的商品。
+            shoppingCartMapper.deleteById(existing.getId());
+        }
+    }
+
+    /**
      * 使用当前登录用户的 ID 清空购物车，不影响其他用户的数据。
      */
     @Override

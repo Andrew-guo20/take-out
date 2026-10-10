@@ -12,6 +12,18 @@ import java.util.List;
 @Mapper
 public interface ShoppingCartMapper {
     /**
+     * 根据购物车记录 ID 将数量减一，数量不得小于 1。
+     */
+    @Update("update shopping_cart set number = number - 1 where id = #{id} and number > 1")
+    void decrementNumber(Long id);
+
+    /**
+     * 删除只剩一份的购物车记录。
+     */
+    @Delete("delete from shopping_cart where id = #{id} and number = 1")
+    void deleteById(Long id);
+
+    /**
      * 删除指定用户的全部购物车记录。
      */
     @Delete("delete from shopping_cart where user_id = #{userId}")

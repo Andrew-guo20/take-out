@@ -7,6 +7,12 @@ import java.util.List;
 
 public interface ShoppingCartService {
     /**
+     * 商品数量减一，数量为 1 时删除购物车记录。
+     * @param shoppingCartDTO 商品 ID 和菜品口味
+     */
+    void subShoppingCart(ShoppingCartDTO shoppingCartDTO);
+
+    /**
      * 清空当前登录用户的全部购物车记录。
      */
     void cleanShoppingCart();
