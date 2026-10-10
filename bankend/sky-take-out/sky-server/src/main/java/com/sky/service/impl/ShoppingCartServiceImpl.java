@@ -25,6 +25,14 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     private SetmealMapper setmealMapper;
 
     /**
+     * 使用当前登录用户的 ID 清空购物车，不影响其他用户的数据。
+     */
+    @Override
+    public void cleanShoppingCart() {
+        shoppingCartMapper.deleteByUserId(BaseContext.getCurrentId());
+    }
+
+    /**
      * 使用当前登录用户的 ID 查询购物车，避免访问其他用户的数据。
      */
     @Override

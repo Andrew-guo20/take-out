@@ -7,6 +7,11 @@ import java.util.List;
 
 public interface ShoppingCartService {
     /**
+     * 清空当前登录用户的全部购物车记录。
+     */
+    void cleanShoppingCart();
+
+    /**
      * 查询当前登录用户的全部购物车记录。
      */
     List<ShoppingCart> showShoppingCart();
