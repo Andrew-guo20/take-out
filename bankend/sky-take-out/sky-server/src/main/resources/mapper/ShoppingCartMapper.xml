@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.sky.mapper.ShoppingCartMapper">
+    <!-- 限定当前用户，菜品按 ID 和口味匹配，套餐按 ID 匹配。 -->
+    <select id="getByProduct" resultType="com.sky.entity.ShoppingCart">
+        select * from shopping_cart
+        where user_id = #{userId}
+        <choose>
+            <when test="dishId != null">
+                and dish_id = #{dishId}
+                <!-- 无口味时，将 null 与空字符串视为相同。 -->
+                and coalesce(dish_flavor, '') = coalesce(#{dishFlavor}, '')
+            </when>
+            <otherwise>
+                and setmeal_id = #{setmealId}
+            </otherwise>
+        </choose>
+    </select>
+</mapper>
