@@ -3,10 +3,19 @@ package com.sky.mapper;
 import com.sky.entity.ShoppingCart;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
+
+import java.util.List;
 
 @Mapper
 public interface ShoppingCartMapper {
+    /**
+     * 查询指定用户的购物车，按创建时间倒序返回。
+     */
+    @Select("select * from shopping_cart where user_id = #{userId} order by create_time desc, id desc")
+    List<ShoppingCart> listByUserId(Long userId);
+
     /**
      * 查询当前用户购物车中相同菜品及口味或相同套餐的记录。
      */

@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class ShoppingCartServiceImpl implements ShoppingCartService {
@@ -22,6 +23,14 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     private DishMapper dishMapper;
     @Autowired
     private SetmealMapper setmealMapper;
+
+    /**
+     * 使用当前登录用户的 ID 查询购物车，避免访问其他用户的数据。
+     */
+    @Override
+    public List<ShoppingCart> showShoppingCart() {
+        return shoppingCartMapper.listByUserId(BaseContext.getCurrentId());
+    }
 
     /**
      * 添加购物车：商品已存在时数量加一，否则补全商品信息并插入。
