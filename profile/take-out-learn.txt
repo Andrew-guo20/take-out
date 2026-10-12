@@ -288,13 +288,23 @@ js - 是 - 页面逻辑 、 wxml - 是 - 页面结构 、 json - 否 - 页面配
 	得到内网穿透工具的配置文件，例如  Authtoken saved to configuration file: C:\Users\andre/.cpolar/cpolar.yml
 	b.cpolar.exe http 8080（因为本地的后端服务端口号是8080）
 
-	cpolar by @bestexpresser                                                                                (Ctrl+C to quit)
-	Tunnel Status       online
-	Account             不 睡 觉 的 果 果  (Plan: Free)
-	Version             3.18/3.18
-	Web Interface       127.0.0.1:4042
-	Forwarding          http://4114ea2b.r38.cpolar.top -> http://localhost:8080
-	Forwarding          https://4114ea2b.r38.cpolar.top -> http://localhost:8080
-	# Conn              0
-	Avg Conn Time       0.00ms
 
+订单状态定时处理、来单提醒和客户催单
+一、Spring Task：Spring框架提供的任务调度工具，可以按照约定的时间自动执行某个代码逻辑（定时任务框架、定时自动执行某段Java代码）
+1.应用场景：信用卡每月还款提醒、银行贷款每月还款提醒、火车票售票系统处理未支付订单、入职纪念日为用户发送通知
+2.cron表达式其实就是一个字符串，通过cron表达式可以定义任务触发的时间
+   构成规则：分为6或7个域，由空格分隔开，每个域代表一个含义
+   每个域的含义分别为：秒、分钟、小时、日、月、周（星期几）、年（可选）
+   cron表达式在线生成器：网上多的是（现在有AI了，估计也用不上了）
+3.使用步骤:
+   ①导入maven坐标 spring-context
+   ②启动类添加注解@EnableScheduling开启任务调度
+   ③自定义定时任务类
+二、订单状态定时处理
+1.需求分析：
+用户下单后可能存在的情况：
+①下单后未支付，订单一直处理“待支付”状态
+②用户收货后管理端未点击完成按钮，订单一直处于“派送中”状态
+解决具体逻辑：
+①通过定时任务每分钟检查一次是否存在支付超时订单（下单后超过15分钟仍未支付则判定未支付超时订单），如果存在则修改订单状态为"已取消"
+②通过定时任务每天凌晨一点检查一次是否存在"派送中"的订单，如果存在则修改订单状态为"已完成"
