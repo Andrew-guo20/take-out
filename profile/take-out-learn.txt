@@ -267,4 +267,34 @@ js - 是 - 页面逻辑 、 wxml - 是 - 页面结构 、 json - 否 - 页面配
 			订单表和订单明细表的关系：一对多
 2.代码开发
 三、订单支付
+1.微信支付介绍
+ 微信支付产品：付款码支付、JSAP支付（H5页面）、小程序支付、Native支付（商家提供二维码，用户扫码支付）、App支付、刷脸支付
+ 参考地址：https://pay.weixin.qq.com/static/product/product_index.shtml
+2.微信支付接入流程：
+ ①提交资料：在线提交营业执照、身份证、银行账号等基础信息，并按指引完成账户验证
+ ②签署协议：微信支付团队会在1~2各工作台内完成审核，审核通过后在线签约，即可体验各项产品能力
+ ③绑定场景：如需自行开发完成收款，需将商户号与APPID进行绑定，或开通微信收款商业版（免开发）完成收款
+3.微信小程序支付时序图
+ JSAPI下单：商户系统调用该接口在微信支付服务后台生成预支付交易单（适用对象：直连商户）
+ 参考地址：https://pay.weixin.qq.com/doc/v3/merchant/4012791897
+ 微信小程序调起支付：通过JSAPI下单接口获取到发起支付的必要参数prepay_id，然后使用微信支付提供的小程序方法调起小程序支付
+ 参考地址：https://pay.weixin.qq.com/doc/v3/merchant/4012791898
+4.微信支付准备工作
+ ①调用过程如何保证数据安全？
+	获取微信支付平台证书、商户私钥文件（在微信支付平台获取）
+ ②微信后台如何调用到商户系统？（内网穿透）
+	获取临时域名（公网ip）：支付成功后微信服务通过该域名回调我们的程序
+ 	a.注册coplar并安装软件，在网页点击 ‘验证’ 获取到 authtoken，在软件目录启动cmd终端，输入 cpolar.exe authtoken 隧道Authtoken，
+	得到内网穿透工具的配置文件，例如  Authtoken saved to configuration file: C:\Users\andre/.cpolar/cpolar.yml
+	b.cpolar.exe http 8080（因为本地的后端服务端口号是8080）
+
+	cpolar by @bestexpresser                                                                                (Ctrl+C to quit)
+	Tunnel Status       online
+	Account             不 睡 觉 的 果 果  (Plan: Free)
+	Version             3.18/3.18
+	Web Interface       127.0.0.1:4042
+	Forwarding          http://4114ea2b.r38.cpolar.top -> http://localhost:8080
+	Forwarding          https://4114ea2b.r38.cpolar.top -> http://localhost:8080
+	# Conn              0
+	Avg Conn Time       0.00ms
 

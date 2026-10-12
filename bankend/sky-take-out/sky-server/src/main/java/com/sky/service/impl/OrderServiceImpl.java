@@ -3,6 +3,12 @@ package com.sky.service.impl;
 import com.sky.constant.MessageConstant;
 import com.sky.context.BaseContext;
 import com.sky.dto.OrdersSubmitDTO;
+import com.alibaba.fastjson.JSONObject;
+import com.sky.dto.OrdersPaymentDTO;
+import com.sky.entity.User;
+import com.sky.mapper.UserMapper;
+import com.sky.utils.WeChatPayUtil;
+import com.sky.vo.OrderPaymentVO;
 import com.sky.entity.AddressBook;
 import com.sky.entity.OrderDetail;
 import com.sky.entity.Orders;
@@ -22,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -40,6 +47,50 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private ShoppingCartMapper shoppingCartMapper;
+
+    @Autowired
+    private UserMapper userMapper;
+
+    @Autowired
+    private WeChatPayUtil weChatPayUtil;
+
+    /**
+     * 订单支付，沿用课程资料的 0.01 元测试金额。
+     */
+    @Override
+    public OrderPaymentVO payment(OrdersPaymentDTO ordersPaymentDTO) throws Exception {
+        // 当前登录用户id
+        Long userId = BaseContext.getCurrentId();
+        User user = userMapper.getById(userId);
+
+        // 调用微信支付接口，生成预支付交易单
+        JSONObject jsonObject = weChatPayUtil.pay(
+                ordersPaymentDTO.getOrderNumber(),// 商户订单号
+                new BigDecimal("0.01"),// 支付金额，单位 元
+                "苍穹外卖订单",// 商业描述
+                user.getOpenid());// 微信用户的openid
+        if ("ORDERPAID".equals(jsonObject.getString("code"))) {
+            throw new OrderBusinessException("该订单已支付");
+        }
+        OrderPaymentVO vo = jsonObject.toJavaObject(OrderPaymentVO.class);
+        vo.setPackageStr(jsonObject.getString("package"));
+        return vo;
+    }
+
+    /**
+     * 支付成功后将订单更新为待接单、已支付，并记录结账时间。
+     */
+    @Override
+    public void paySuccess(String outTradeNo) {
+        Orders ordersDB = orderMapper.getByNumber(outTradeNo);
+        Orders orders = Orders.builder()
+                .id(ordersDB.getId())
+                .status(Orders.TO_BE_CONFIRMED)
+                .payStatus(Orders.PAID)
+                .checkoutTime(LocalDateTime.now())
+                .build();
+        orderMapper.update(orders);
+    }
 
     /**
      * 用户下单，订单、明细和购物车操作在同一事务中完成。

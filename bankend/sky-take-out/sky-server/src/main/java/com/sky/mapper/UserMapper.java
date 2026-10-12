@@ -8,6 +8,12 @@ import org.apache.ibatis.annotations.Select;
 public interface UserMapper {
 
     /**
+     * 根据用户 ID 查询微信支付所需的用户信息。
+     */
+    @Select("select * from user where id = #{id}")
+    User getById(Long id);
+
+    /**
      * 根据openid查询用户
      *
      * @param openid

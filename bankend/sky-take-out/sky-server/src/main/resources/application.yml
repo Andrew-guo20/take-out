@@ -56,3 +56,14 @@ sky:
   wechat:
     appid: ${sky.wechat.appid}
     secret: ${sky.wechat.secret}
+    # 微信支付商户号和商户 API 证书序列号
+    mchid: ${sky.wechat.mchid}
+    mch-serial-no: ${sky.wechat.mch-serial-no}
+    # 商户私钥和微信支付平台证书的本地路径
+    private-key-file-path: ${sky.wechat.private-key-file-path}
+    we-chat-pay-cert-file-path: ${sky.wechat.we-chat-pay-cert-file-path}
+    # API v3 密钥，用于解密支付通知
+    api-v3-key: ${sky.wechat.api-v3-key}
+    # 微信支付及退款的公网回调地址
+    notify-url: ${sky.wechat.notify-url}
+    refund-notify-url: ${sky.wechat.refund-notify-url}
