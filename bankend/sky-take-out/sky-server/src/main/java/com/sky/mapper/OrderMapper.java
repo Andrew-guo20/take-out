@@ -14,6 +14,12 @@ import java.util.List;
 @Mapper
 public interface OrderMapper {
     /**
+     * 根据订单id查询订单。
+     */
+    @Select("select * from orders where id = #{id}")
+    Orders getById(Long id);
+
+    /**
      * 将截止时间之前下单、仍在派送中的订单更新为已完成。
      */
     void completeDeliveryOrder(@Param("orders") Orders orders,

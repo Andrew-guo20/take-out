@@ -59,6 +59,33 @@ public class OrderServiceImpl implements OrderService {
     private WebSocketServer webSocketServer;
 
     /**
+     * 校验客户订单后向管理端发送催单提醒。
+     */
+    @Override
+    public void reminder(Long id) {
+        Long userId = BaseContext.getCurrentId();
+        if (userId == null) {
+            throw new OrderBusinessException(MessageConstant.USER_NOT_LOGIN);
+        }
+        Orders orders = orderMapper.getById(id);
+        if (orders == null || !userId.equals(orders.getUserId())) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+        if (!Orders.PAID.equals(orders.getPayStatus())
+                || (!Orders.TO_BE_CONFIRMED.equals(orders.getStatus())
+                && !Orders.CONFIRMED.equals(orders.getStatus())
+                && !Orders.DELIVERY_IN_PROGRESS.equals(orders.getStatus()))) {
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
+
+        JSONObject message = new JSONObject();
+        message.put("type", 2);
+        message.put("orderId", orders.getId());
+        message.put("content", "订单号：" + orders.getNumber());
+        webSocketServer.sendToAllClient(message.toJSONString());
+    }
+
+    /**
      * 订单支付，沿用课程资料的 0.01 元测试金额。
      */
     @Override

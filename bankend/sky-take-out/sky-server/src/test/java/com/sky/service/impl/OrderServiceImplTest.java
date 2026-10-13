@@ -2,12 +2,17 @@ package com.sky.service.impl;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.sky.constant.MessageConstant;
+import com.sky.context.BaseContext;
 import com.sky.entity.Orders;
 import com.sky.exception.OrderBusinessException;
 import com.sky.mapper.OrderMapper;
 import com.sky.websocket.WebSocketServer;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -21,6 +26,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 class OrderServiceImplTest {
@@ -31,8 +37,90 @@ class OrderServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        BaseContext.setCurrentId(7L);
         ReflectionTestUtils.setField(service, "orderMapper", orderMapper);
         ReflectionTestUtils.setField(service, "webSocketServer", webSocketServer);
+    }
+
+    @AfterEach
+    void clearCurrentUser() {
+        BaseContext.removeCurrentId();
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 3, 4})
+    void reminderNotifiesForOwnPaidActiveOrderWithoutChangingIt(int status) {
+        when(orderMapper.getById(42L)).thenReturn(Orders.builder()
+                .id(42L).number("order-42").userId(7L).status(status).payStatus(Orders.PAID).build());
+
+        service.reminder(42L);
+
+        ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
+        verify(webSocketServer).sendToAllClient(messageCaptor.capture());
+        JSONObject message = JSON.parseObject(messageCaptor.getValue());
+        assertEquals(2, message.getIntValue("type"));
+        assertEquals(42L, message.getLongValue("orderId"));
+        assertEquals("\u8ba2\u5355\u53f7\uff1aorder-42", message.getString("content"));
+        verify(orderMapper).getById(42L);
+        verifyNoMoreInteractions(orderMapper);
+    }
+
+    @Test
+    void reminderRejectsUnauthenticatedUser() {
+        BaseContext.removeCurrentId();
+
+        OrderBusinessException exception = assertThrows(OrderBusinessException.class,
+                () -> service.reminder(42L));
+
+        assertEquals(MessageConstant.USER_NOT_LOGIN, exception.getMessage());
+        verifyNoInteractions(orderMapper, webSocketServer);
+    }
+
+    @Test
+    void reminderRejectsMissingOrder() {
+        OrderBusinessException exception = assertThrows(OrderBusinessException.class,
+                () -> service.reminder(42L));
+
+        assertEquals(MessageConstant.ORDER_NOT_FOUND, exception.getMessage());
+        verifyNoInteractions(webSocketServer);
+    }
+
+    @Test
+    void reminderRejectsAnotherUsersOrder() {
+        when(orderMapper.getById(42L)).thenReturn(Orders.builder()
+                .id(42L).userId(8L).status(Orders.CONFIRMED).payStatus(Orders.PAID).build());
+
+        OrderBusinessException exception = assertThrows(OrderBusinessException.class,
+                () -> service.reminder(42L));
+
+        assertEquals(MessageConstant.ORDER_NOT_FOUND, exception.getMessage());
+        verifyNoInteractions(webSocketServer);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 5, 6})
+    void reminderRejectsInactiveOrder(int status) {
+        when(orderMapper.getById(42L)).thenReturn(Orders.builder()
+                .id(42L).userId(7L).status(status).payStatus(Orders.PAID).build());
+
+        OrderBusinessException exception = assertThrows(OrderBusinessException.class,
+                () -> service.reminder(42L));
+
+        assertEquals(MessageConstant.ORDER_STATUS_ERROR, exception.getMessage());
+        verifyNoInteractions(webSocketServer);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 2})
+    void reminderRejectsUnpaidOrRefundedOrder(int payStatus) {
+        when(orderMapper.getById(42L)).thenReturn(Orders.builder()
+                .id(42L).userId(7L).status(Orders.CONFIRMED).payStatus(payStatus).build());
+
+        OrderBusinessException exception = assertThrows(OrderBusinessException.class,
+                () -> service.reminder(42L));
+
+        assertEquals(MessageConstant.ORDER_STATUS_ERROR, exception.getMessage());
+        verifyNoInteractions(webSocketServer);
     }
 
     @Test

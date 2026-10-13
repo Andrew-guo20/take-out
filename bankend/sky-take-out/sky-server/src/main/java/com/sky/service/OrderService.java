@@ -8,6 +8,11 @@ import com.sky.vo.OrderSubmitVO;
 public interface OrderService {
 
     /**
+     * 客户催单。
+     */
+    void reminder(Long id);
+
+    /**
      * 订单支付。
      */
     OrderPaymentVO payment(OrdersPaymentDTO ordersPaymentDTO) throws Exception;
