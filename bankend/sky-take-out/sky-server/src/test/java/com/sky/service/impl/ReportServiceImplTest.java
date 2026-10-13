@@ -3,7 +3,9 @@ package com.sky.service.impl;
 import com.sky.entity.Orders;
 import com.sky.exception.BaseException;
 import com.sky.mapper.OrderMapper;
+import com.sky.mapper.UserMapper;
 import com.sky.vo.TurnoverReportVO;
+import com.sky.vo.UserReportVO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -25,11 +27,13 @@ import static org.mockito.Mockito.when;
 class ReportServiceImplTest {
 
     private final OrderMapper orderMapper = mock(OrderMapper.class);
+    private final UserMapper userMapper = mock(UserMapper.class);
     private final ReportServiceImpl service = new ReportServiceImpl();
 
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(service, "orderMapper", orderMapper);
+        ReflectionTestUtils.setField(service, "userMapper", userMapper);
     }
 
     @ParameterizedTest
@@ -78,5 +82,53 @@ class ReportServiceImplTest {
 
         assertEquals("2026-10-11,2026-10-12,2026-10-13", report.getDateList());
         assertEquals("0.0,125.5,0.0", report.getTurnoverList());
+    }
+
+    @ParameterizedTest
+    @MethodSource("missingDates")
+    void userStatisticsRejectMissingDatesBeforeQuerying(LocalDate begin, LocalDate end) {
+        assertThrows(BaseException.class, () -> service.getUserStatistics(begin, end));
+
+        verifyNoInteractions(userMapper);
+    }
+
+    @Test
+    void userStatisticsRejectReversedRangeBeforeQuerying() {
+        LocalDate date = LocalDate.of(2026, 10, 13);
+
+        assertThrows(BaseException.class, () -> service.getUserStatistics(date, date.minusDays(1)));
+
+        verifyNoInteractions(userMapper);
+    }
+
+    @Test
+    void userStatisticsReturnSingleDayZerosAndUseWholeDayBoundaries() {
+        LocalDate date = LocalDate.of(2026, 10, 13);
+
+        UserReportVO report = service.getUserStatistics(date, date);
+
+        verify(userMapper).countByMap(date.atStartOfDay(), date.plusDays(1).atStartOfDay());
+        verify(userMapper).countByMap(null, date.plusDays(1).atStartOfDay());
+        assertEquals("2026-10-13", report.getDateList());
+        assertEquals("0", report.getNewUserList());
+        assertEquals("0", report.getTotalUserList());
+    }
+
+    @Test
+    void userStatisticsReturnDailyNewAndCumulativeCountsIncludingBothEnds() {
+        LocalDate begin = LocalDate.of(2026, 10, 11);
+        for (int day = 0; day < 3; day++) {
+            LocalDate date = begin.plusDays(day);
+            when(userMapper.countByMap(date.atStartOfDay(), date.plusDays(1).atStartOfDay()))
+                    .thenReturn(day == 0 ? 1 : day == 1 ? 0 : 2);
+            when(userMapper.countByMap(null, date.plusDays(1).atStartOfDay()))
+                    .thenReturn(day < 2 ? 6 : 8);
+        }
+
+        UserReportVO report = service.getUserStatistics(begin, begin.plusDays(2));
+
+        assertEquals("2026-10-11,2026-10-12,2026-10-13", report.getDateList());
+        assertEquals("1,0,2", report.getNewUserList());
+        assertEquals("6,6,8", report.getTotalUserList());
     }
 }

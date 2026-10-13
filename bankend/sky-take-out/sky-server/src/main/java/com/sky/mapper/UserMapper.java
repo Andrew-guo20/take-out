@@ -2,7 +2,10 @@ package com.sky.mapper;
 
 import com.sky.entity.User;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+
+import java.time.LocalDateTime;
 
 @Mapper
 public interface UserMapper {
@@ -35,4 +38,13 @@ public interface UserMapper {
      * @param user
      */
     void insert(User user);
+
+    /**
+     * 根据动态条件统计用户数量
+     * @param begin 起始时间，包含该时刻；为空时不限制
+     * @param end 结束时间，不包含该时刻
+     * @return
+     */
+    Integer countByMap(@Param("begin") LocalDateTime begin,
+                       @Param("end") LocalDateTime end);
 }

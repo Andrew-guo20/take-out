@@ -3,8 +3,10 @@ package com.sky.service.impl;
 import com.sky.entity.Orders;
 import com.sky.exception.BaseException;
 import com.sky.mapper.OrderMapper;
+import com.sky.mapper.UserMapper;
 import com.sky.service.ReportService;
 import com.sky.vo.TurnoverReportVO;
+import com.sky.vo.UserReportVO;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.util.StringUtil;
@@ -22,6 +24,9 @@ public class ReportServiceImpl implements ReportService {
 
     @Autowired
     private OrderMapper orderMapper;
+
+    @Autowired
+    private UserMapper userMapper;
 
     /**
      * 统计指定时间区间内的营业额数据
@@ -64,6 +69,49 @@ public class ReportServiceImpl implements ReportService {
                 .builder()
                 .dateList(StringUtils.join(dateList,","))
                 .turnoverList(StringUtils.join(turnoverList,","))
+                .build();
+    }
+
+    /**
+     * 统计指定时间区间内的用户数据
+     * @param begin
+     * @param end
+     * @return
+     */
+    public UserReportVO getUserStatistics(LocalDate begin, LocalDate end) {
+        if (begin == null || end == null) {
+            throw new BaseException("开始日期和结束日期不能为空");
+        }
+        if (begin.isAfter(end)) {
+            throw new BaseException("开始日期不能晚于结束日期");
+        }
+        // 当前集合用于存放从begin到end范围内每天的日期
+        List<LocalDate> dateList = new ArrayList<>();
+
+        dateList.add(begin);
+        while (!begin.equals(end)){
+             // 日期计算，计算指定日期的后一天对应的日期
+            begin = begin.plusDays(1);
+            dateList.add(begin);
+        }
+
+        // 存放每天的新增用户数量
+        List<Integer> newUserList = new ArrayList<>();
+        // 存放每天的总用户数量
+        List<Integer> totalUserList = new ArrayList<>();
+
+
+        for (LocalDate date : dateList) {
+            LocalDateTime beginTime = date.atStartOfDay();
+            LocalDateTime endTime = date.plusDays(1).atStartOfDay();
+            newUserList.add(userMapper.countByMap(beginTime, endTime));
+            totalUserList.add(userMapper.countByMap(null, endTime));
+        }
+
+        return UserReportVO.builder()
+                .dateList(StringUtils.join(dateList,","))
+                .totalUserList(StringUtils.join(totalUserList,","))
+                .newUserList(StringUtils.join(newUserList,","))
                 .build();
     }
 }
