@@ -22,6 +22,7 @@ import com.sky.mapper.OrderMapper;
 import com.sky.mapper.ShoppingCartMapper;
 import com.sky.service.OrderService;
 import com.sky.vo.OrderSubmitVO;
+import com.sky.websocket.WebSocketServer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
@@ -54,6 +55,9 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     private WeChatPayUtil weChatPayUtil;
 
+    @Autowired
+    private WebSocketServer webSocketServer;
+
     /**
      * 订单支付，沿用课程资料的 0.01 元测试金额。
      */
@@ -78,18 +82,30 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
-     * 支付成功后将订单更新为待接单、已支付，并记录结账时间。
+     * 支付成功后更新订单，并向管理端发送来单提醒。
      */
     @Override
     public void paySuccess(String outTradeNo) {
         Orders ordersDB = orderMapper.getByNumber(outTradeNo);
+        if (ordersDB == null) {
+            throw new OrderBusinessException("订单不存在");
+        }
         Orders orders = Orders.builder()
                 .id(ordersDB.getId())
                 .status(Orders.TO_BE_CONFIRMED)
                 .payStatus(Orders.PAID)
                 .checkoutTime(LocalDateTime.now())
                 .build();
-        orderMapper.update(orders);
+        // 条件更新保证重复或并发回调只触发一次来单提醒。
+        if (orderMapper.paySuccess(orders) == 0) {
+            return;
+        }
+
+        JSONObject message = new JSONObject();
+        message.put("type", 1);
+        message.put("orderId", ordersDB.getId());
+        message.put("content", "订单号：" + outTradeNo);
+        webSocketServer.sendToAllClient(message.toJSONString());
     }
 
     /**

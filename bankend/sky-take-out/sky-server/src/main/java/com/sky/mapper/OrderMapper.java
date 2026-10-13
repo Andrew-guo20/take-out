@@ -42,6 +42,11 @@ public interface OrderMapper {
     Orders getByNumber(String orderNumber);
 
     /**
+     * 将待付款、未支付的订单更新为已支付，返回更新行数。
+     */
+    int paySuccess(Orders orders);
+
+    /**
      * 修改订单信息。
      */
     void update(Orders orders);
