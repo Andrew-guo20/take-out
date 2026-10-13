@@ -61,4 +61,15 @@ public interface OrderMapper {
      * 保存订单并回填自增主键。
      */
     void insert(Orders orders);
+
+    /**
+     * 根据动态条件统计营业额数据
+     * @param begin 起始时间，包含该时刻
+     * @param end 结束时间，不包含该时刻
+     * @param status 订单状态
+     * @return
+     */
+    Double sumByMap(@Param("begin") LocalDateTime begin,
+                    @Param("end") LocalDateTime end,
+                    @Param("status") Integer status);
 }

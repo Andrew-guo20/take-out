@@ -11,6 +11,9 @@ sky-server/src/test/**
 !sky-server/src/test/java/com/sky/service/impl/OrderServiceImplTest.java
 !sky-server/src/test/java/com/sky/websocket/WebSocketServerTest.java
 !sky-server/src/test/java/com/sky/controller/user/OrderControllerTest.java
+!sky-server/src/test/java/com/sky/controller/admin/ReportControllerTest.java
+!sky-server/src/test/java/com/sky/service/impl/ReportServiceImplTest.java
+!sky-server/src/test/java/com/sky/mapper/OrderMapperTurnoverTest.java
 
 # 本地开发配置包含真实密钥，不进版本库
 application-dev.yml
