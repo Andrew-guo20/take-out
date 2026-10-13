@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.time.LocalDateTime;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -53,7 +54,7 @@ class ReportControllerTest {
 
     @Test
     void validDatesKeepExistingResponseFormat() throws Exception {
-        when(orderMapper.sumByMap(any(), any(), any())).thenReturn(null, 125.5, null);
+        when(orderMapper.sumByMap(anyMap())).thenReturn(null, 125.5, null);
 
         mvc.perform(get("/admin/report/turnoverStatistics")
                         .param("begin", "2026-10-11").param("end", "2026-10-13"))
@@ -86,5 +87,32 @@ class ReportControllerTest {
                 .andExpect(jsonPath("$.data.dateList").value("2026-10-11,2026-10-12,2026-10-13"))
                 .andExpect(jsonPath("$.data.newUserList").value("1,0,2"))
                 .andExpect(jsonPath("$.data.totalUserList").value("6,6,8"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "?begin=2026-10-13", "?end=2026-10-13",
+            "?begin=2026-10-13&end=2026-10-12"})
+    void invalidOrderStatisticsDatesReturnBusinessError(String query) throws Exception {
+        mvc.perform(get("/admin/report/ordersStatistics" + query))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        verifyNoInteractions(orderMapper);
+    }
+
+    @Test
+    void orderStatisticsReturnFrontendCompatibleListsAndTotals() throws Exception {
+        when(orderMapper.countByMap(anyMap())).thenReturn(2, 1, 0, 0, 3, 3);
+
+        mvc.perform(get("/admin/report/ordersStatistics")
+                        .param("begin", "2026-10-11").param("end", "2026-10-13"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(1))
+                .andExpect(jsonPath("$.data.dateList").value("2026-10-11,2026-10-12,2026-10-13"))
+                .andExpect(jsonPath("$.data.orderCountList").value("2,0,3"))
+                .andExpect(jsonPath("$.data.validOrderCountList").value("1,0,3"))
+                .andExpect(jsonPath("$.data.totalOrderCount").value(5))
+                .andExpect(jsonPath("$.data.validOrderCount").value(4))
+                .andExpect(jsonPath("$.data.orderCompletionRate").value(0.8));
     }
 }

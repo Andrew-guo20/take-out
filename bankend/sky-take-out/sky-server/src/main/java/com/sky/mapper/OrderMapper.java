@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Select;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 订单数据访问接口。
@@ -64,12 +65,15 @@ public interface OrderMapper {
 
     /**
      * 根据动态条件统计营业额数据
-     * @param begin 起始时间，包含该时刻
-     * @param end 结束时间，不包含该时刻
-     * @param status 订单状态
+     * @param map 动态查询条件，支持 begin、end、status
      * @return
      */
-    Double sumByMap(@Param("begin") LocalDateTime begin,
-                    @Param("end") LocalDateTime end,
-                    @Param("status") Integer status);
+    Double sumByMap(Map map);
+
+    /**
+     * 根据动态条件统计订单数量
+     * @param map 动态查询条件，支持 begin、end、status
+     * @return
+     */
+    Integer countByMap(Map map);
 }

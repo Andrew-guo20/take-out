@@ -15,6 +15,8 @@ import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -44,8 +46,11 @@ class OrderMapperTurnoverTest {
             SqlSessionFactory factory = new SqlSessionFactoryBuilder().build(configuration);
             LocalDate date = LocalDate.of(2026, 10, 13);
             try (SqlSession session = factory.openSession()) {
-                assertEquals(30.30, session.getMapper(OrderMapper.class).sumByMap(
-                        date.atStartOfDay(), date.plusDays(1).atStartOfDay(), Orders.COMPLETED), 0.000001);
+                Map<String, Object> params = new HashMap<>();
+                params.put("begin", date.atStartOfDay());
+                params.put("end", date.plusDays(1).atStartOfDay());
+                params.put("status", Orders.COMPLETED);
+                assertEquals(30.30, session.getMapper(OrderMapper.class).sumByMap(params), 0.000001);
             }
         }
     }

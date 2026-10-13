@@ -4,6 +4,7 @@ import com.sky.entity.Orders;
 import com.sky.exception.BaseException;
 import com.sky.mapper.OrderMapper;
 import com.sky.mapper.UserMapper;
+import com.sky.vo.OrderReportVO;
 import com.sky.vo.TurnoverReportVO;
 import com.sky.vo.UserReportVO;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,11 +15,13 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -68,14 +71,18 @@ class ReportServiceImplTest {
 
         TurnoverReportVO report = service.getTurnoverStatistics(date, date);
 
-        verify(orderMapper).sumByMap(date.atStartOfDay(), date.plusDays(1).atStartOfDay(), Orders.COMPLETED);
+        Map<String, Object> expected = new HashMap<>();
+        expected.put("begin", date.atStartOfDay());
+        expected.put("end", date.plusDays(1).atStartOfDay());
+        expected.put("status", Orders.COMPLETED);
+        verify(orderMapper).sumByMap(expected);
         assertEquals("2026-10-13", report.getDateList());
         assertEquals("0.0", report.getTurnoverList());
     }
 
     @Test
     void returnsEveryDateIncludingBothEndsAndFillsMissingTurnoverWithZero() {
-        when(orderMapper.sumByMap(any(), any(), any())).thenReturn(null, 125.5, null);
+        when(orderMapper.sumByMap(anyMap())).thenReturn(null, 125.5, null);
 
         TurnoverReportVO report = service.getTurnoverStatistics(
                 LocalDate.of(2026, 10, 11), LocalDate.of(2026, 10, 13));
@@ -130,5 +137,37 @@ class ReportServiceImplTest {
         assertEquals("2026-10-11,2026-10-12,2026-10-13", report.getDateList());
         assertEquals("1,0,2", report.getNewUserList());
         assertEquals("6,6,8", report.getTotalUserList());
+    }
+
+    @ParameterizedTest
+    @MethodSource("missingDates")
+    void orderStatisticsRejectMissingDatesBeforeQuerying(LocalDate begin, LocalDate end) {
+        assertThrows(BaseException.class, () -> service.getOrderStatistics(begin, end));
+
+        verifyNoInteractions(orderMapper);
+    }
+
+    @Test
+    void orderStatisticsRejectReversedRangeBeforeQuerying() {
+        LocalDate date = LocalDate.of(2026, 10, 13);
+
+        assertThrows(BaseException.class, () -> service.getOrderStatistics(date, date.minusDays(1)));
+
+        verifyNoInteractions(orderMapper);
+    }
+
+    @Test
+    void orderStatisticsReturnDailyAndTotalsIncludingBothEnds() {
+        LocalDate begin = LocalDate.of(2026, 10, 11);
+        when(orderMapper.countByMap(anyMap())).thenReturn(2, 1, 0, 0, 3, 3);
+
+        OrderReportVO report = service.getOrderStatistics(begin, begin.plusDays(2));
+
+        assertEquals("2026-10-11,2026-10-12,2026-10-13", report.getDateList());
+        assertEquals("2,0,3", report.getOrderCountList());
+        assertEquals("1,0,3", report.getValidOrderCountList());
+        assertEquals(5, report.getTotalOrderCount());
+        assertEquals(4, report.getValidOrderCount());
+        assertEquals(0.8, report.getOrderCompletionRate());
     }
 }
