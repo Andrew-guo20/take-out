@@ -11,9 +11,15 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface SetmealMapper {
+
+    /**
+     * 根据条件统计套餐数量
+     */
+    Integer countByMap(Map map);
 
     @AutoFill(value = OperationType.INSERT)
     void insert(Setmeal setmeal);

@@ -4,6 +4,7 @@ import com.sky.dto.GoodsSalesDTO;
 import com.sky.entity.OrderDetail;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -13,6 +14,12 @@ import java.util.List;
  */
 @Mapper
 public interface OrderDetailMapper {
+    /**
+     * 根据订单id查询订单明细。
+     */
+    @Select("select * from order_detail where order_id = #{orderId} order by id")
+    List<OrderDetail> getByOrderId(@Param("orderId") Long orderId);
+
     /**
      * 批量保存订单明细。
      */

@@ -1,10 +1,14 @@
 package com.sky.service.impl;
 
+import com.github.pagehelper.Page;
+import com.github.pagehelper.PageHelper;
 import com.sky.constant.MessageConstant;
 import com.sky.context.BaseContext;
 import com.sky.dto.OrdersSubmitDTO;
 import com.alibaba.fastjson.JSONObject;
 import com.sky.dto.OrdersPaymentDTO;
+import com.sky.dto.OrdersPageQueryDTO;
+import com.sky.result.PageResult;
 import com.sky.entity.User;
 import com.sky.mapper.UserMapper;
 import com.sky.utils.WeChatPayUtil;
@@ -22,6 +26,8 @@ import com.sky.mapper.OrderMapper;
 import com.sky.mapper.ShoppingCartMapper;
 import com.sky.service.OrderService;
 import com.sky.vo.OrderSubmitVO;
+import com.sky.vo.OrderVO;
+import com.sky.vo.OrderStatisticsVO;
 import com.sky.websocket.WebSocketServer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.BeanUtils;
@@ -31,8 +37,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -57,6 +65,35 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private WebSocketServer webSocketServer;
+
+    /**
+     * 管理端订单条件分页查询，补充列表展示所需的菜品信息。
+     */
+    @Override
+    public PageResult pageQuery(OrdersPageQueryDTO ordersPageQueryDTO) {
+        PageHelper.startPage(ordersPageQueryDTO.getPage(), ordersPageQueryDTO.getPageSize());
+        Page<Orders> page = orderMapper.pageQuery(ordersPageQueryDTO);
+        List<OrderVO> records = new ArrayList<>();
+        for (Orders orders : page.getResult()) {
+            OrderVO orderVO = new OrderVO();
+            BeanUtils.copyProperties(orders, orderVO);
+            List<OrderDetail> details = orderDetailMapper.getByOrderId(orders.getId());
+            orderVO.setOrderDishes(details.stream()
+                    .map(detail -> detail.getName() + "*" + detail.getNumber())
+                    .collect(Collectors.joining(";")));
+            records.add(orderVO);
+        }
+        return new PageResult(page.getTotal(), records);
+    }
+
+    @Override
+    public OrderStatisticsVO statistics() {
+        OrderStatisticsVO statistics = new OrderStatisticsVO();
+        statistics.setToBeConfirmed(orderMapper.countByMap(Collections.singletonMap("status", Orders.TO_BE_CONFIRMED)));
+        statistics.setConfirmed(orderMapper.countByMap(Collections.singletonMap("status", Orders.CONFIRMED)));
+        statistics.setDeliveryInProgress(orderMapper.countByMap(Collections.singletonMap("status", Orders.DELIVERY_IN_PROGRESS)));
+        return statistics;
+    }
 
     /**
      * 校验客户订单后向管理端发送催单提醒。

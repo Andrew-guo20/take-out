@@ -11,9 +11,15 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface DishMapper {
+
+    /**
+     * 根据条件统计菜品数量
+     */
+    Integer countByMap(Map map);
 
     @Select("select d.* from dish d join setmeal_dish sd on d.id = sd.dish_id " +
             "where sd.setmeal_id = #{setmealId}")

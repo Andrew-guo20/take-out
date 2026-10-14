@@ -2,10 +2,23 @@ package com.sky.service;
 
 import com.sky.dto.OrdersSubmitDTO;
 import com.sky.dto.OrdersPaymentDTO;
+import com.sky.dto.OrdersPageQueryDTO;
+import com.sky.result.PageResult;
 import com.sky.vo.OrderPaymentVO;
 import com.sky.vo.OrderSubmitVO;
+import com.sky.vo.OrderStatisticsVO;
 
 public interface OrderService {
+
+    /**
+     * 管理端订单条件分页查询。
+     */
+    PageResult pageQuery(OrdersPageQueryDTO ordersPageQueryDTO);
+
+    /**
+     * 查询待接单、待派送和派送中的订单数量。
+     */
+    OrderStatisticsVO statistics();
 
     /**
      * 客户催单。
