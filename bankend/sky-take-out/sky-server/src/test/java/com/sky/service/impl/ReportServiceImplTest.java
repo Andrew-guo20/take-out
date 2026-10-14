@@ -1,10 +1,13 @@
 package com.sky.service.impl;
 
+import com.sky.dto.GoodsSalesDTO;
 import com.sky.entity.Orders;
 import com.sky.exception.BaseException;
+import com.sky.mapper.OrderDetailMapper;
 import com.sky.mapper.OrderMapper;
 import com.sky.mapper.UserMapper;
 import com.sky.vo.OrderReportVO;
+import com.sky.vo.SalesTop10ReportVO;
 import com.sky.vo.TurnoverReportVO;
 import com.sky.vo.UserReportVO;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,12 +18,14 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -31,12 +36,14 @@ class ReportServiceImplTest {
 
     private final OrderMapper orderMapper = mock(OrderMapper.class);
     private final UserMapper userMapper = mock(UserMapper.class);
+    private final OrderDetailMapper orderDetailMapper = mock(OrderDetailMapper.class);
     private final ReportServiceImpl service = new ReportServiceImpl();
 
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(service, "orderMapper", orderMapper);
         ReflectionTestUtils.setField(service, "userMapper", userMapper);
+        ReflectionTestUtils.setField(service, "orderDetailMapper", orderDetailMapper);
     }
 
     @ParameterizedTest
@@ -169,5 +176,50 @@ class ReportServiceImplTest {
         assertEquals(5, report.getTotalOrderCount());
         assertEquals(4, report.getValidOrderCount());
         assertEquals(0.8, report.getOrderCompletionRate());
+    }
+
+    @ParameterizedTest
+    @MethodSource("missingDates")
+    void top10RejectMissingDatesBeforeQuerying(LocalDate begin, LocalDate end) {
+        assertThrows(BaseException.class, () -> service.getTop10(begin, end));
+
+        verifyNoInteractions(orderDetailMapper);
+    }
+
+    @Test
+    void top10RejectReversedRangeBeforeQuerying() {
+        LocalDate date = LocalDate.of(2026, 10, 13);
+
+        assertThrows(BaseException.class, () -> service.getTop10(date, date.minusDays(1)));
+
+        verifyNoInteractions(orderDetailMapper);
+    }
+
+    @Test
+    void top10UseWholeDayIntervalAndJoinNameAndNumberLists() {
+        LocalDate date = LocalDate.of(2026, 10, 13);
+        when(orderDetailMapper.getSalesTop10(any(), any(), any())).thenReturn(Arrays.asList(
+                GoodsSalesDTO.builder().name("鱼香肉丝").number(12).build(),
+                GoodsSalesDTO.builder().name("宫保鸡丁").number(8).build()));
+
+        SalesTop10ReportVO report = service.getTop10(date, date);
+
+        verify(orderDetailMapper).getSalesTop10(
+                date.atStartOfDay(), date.plusDays(1).atStartOfDay(), Orders.COMPLETED);
+        assertEquals("鱼香肉丝,宫保鸡丁", report.getNameList());
+        assertEquals("12,8", report.getNumberList());
+    }
+
+    @Test
+    void top10ReturnsEmptyListsForRangeWithoutSales() {
+        LocalDate begin = LocalDate.of(2026, 9, 30);
+        LocalDate end = LocalDate.of(2026, 10, 2);
+
+        SalesTop10ReportVO report = service.getTop10(begin, end);
+
+        verify(orderDetailMapper).getSalesTop10(
+                begin.atStartOfDay(), end.plusDays(1).atStartOfDay(), Orders.COMPLETED);
+        assertEquals("", report.getNameList());
+        assertEquals("", report.getNumberList());
     }
 }

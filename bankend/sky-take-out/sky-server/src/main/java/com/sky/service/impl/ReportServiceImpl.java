@@ -1,11 +1,14 @@
 package com.sky.service.impl;
 
+import com.sky.dto.GoodsSalesDTO;
 import com.sky.entity.Orders;
 import com.sky.exception.BaseException;
+import com.sky.mapper.OrderDetailMapper;
 import com.sky.mapper.OrderMapper;
 import com.sky.mapper.UserMapper;
 import com.sky.service.ReportService;
 import com.sky.vo.OrderReportVO;
+import com.sky.vo.SalesTop10ReportVO;
 import com.sky.vo.TurnoverReportVO;
 import com.sky.vo.UserReportVO;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +33,9 @@ public class ReportServiceImpl implements ReportService {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private OrderDetailMapper orderDetailMapper;
 
     /**
      * 统计指定时间区间内的营业额数据
@@ -191,6 +197,38 @@ public class ReportServiceImpl implements ReportService {
                 .totalOrderCount(totalOrderCount)
                 .validOrderCount(validOrderCount)
                 .orderCompletionRate(orderCompletionRate)
+                .build();
+    }
+
+    /**
+     * 统计指定时间区间内销量前十的商品
+     * @param begin
+     * @param end
+     * @return
+     */
+    public SalesTop10ReportVO getTop10(LocalDate begin, LocalDate end) {
+        if (begin == null || end == null) {
+            throw new BaseException("开始日期和结束日期不能为空");
+        }
+        if (begin.isAfter(end)) {
+            throw new BaseException("开始日期不能晚于结束日期");
+        }
+
+        LocalDateTime beginTime = begin.atStartOfDay();
+        LocalDateTime endTime = end.plusDays(1).atStartOfDay();
+        List<GoodsSalesDTO> salesList = orderDetailMapper.getSalesTop10(
+                beginTime, endTime, Orders.COMPLETED);
+
+        List<String> nameList = new ArrayList<>();
+        List<Integer> numberList = new ArrayList<>();
+        for (GoodsSalesDTO goodsSales : salesList) {
+            nameList.add(goodsSales.getName());
+            numberList.add(goodsSales.getNumber());
+        }
+
+        return SalesTop10ReportVO.builder()
+                .nameList(StringUtils.join(nameList, ","))
+                .numberList(StringUtils.join(numberList, ","))
                 .build();
     }
 }

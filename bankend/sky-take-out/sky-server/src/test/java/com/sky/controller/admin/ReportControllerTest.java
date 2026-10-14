@@ -1,6 +1,8 @@
 package com.sky.controller.admin;
 
+import com.sky.dto.GoodsSalesDTO;
 import com.sky.handler.GlobalExceptionHandler;
+import com.sky.mapper.OrderDetailMapper;
 import com.sky.mapper.OrderMapper;
 import com.sky.mapper.UserMapper;
 import com.sky.service.impl.ReportServiceImpl;
@@ -13,6 +15,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
@@ -28,6 +31,7 @@ class ReportControllerTest {
 
     private final OrderMapper orderMapper = mock(OrderMapper.class);
     private final UserMapper userMapper = mock(UserMapper.class);
+    private final OrderDetailMapper orderDetailMapper = mock(OrderDetailMapper.class);
     private MockMvc mvc;
 
     @BeforeEach
@@ -35,6 +39,7 @@ class ReportControllerTest {
         ReportServiceImpl service = new ReportServiceImpl();
         ReflectionTestUtils.setField(service, "orderMapper", orderMapper);
         ReflectionTestUtils.setField(service, "userMapper", userMapper);
+        ReflectionTestUtils.setField(service, "orderDetailMapper", orderDetailMapper);
         ReportController controller = new ReportController();
         ReflectionTestUtils.setField(controller, "reportService", service);
         mvc = MockMvcBuilders.standaloneSetup(controller)
@@ -114,5 +119,40 @@ class ReportControllerTest {
                 .andExpect(jsonPath("$.data.totalOrderCount").value(5))
                 .andExpect(jsonPath("$.data.validOrderCount").value(4))
                 .andExpect(jsonPath("$.data.orderCompletionRate").value(0.8));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "?begin=2026-10-13", "?end=2026-10-13",
+            "?begin=2026-10-13&end=2026-10-12"})
+    void invalidTop10DatesReturnBusinessError(String query) throws Exception {
+        mvc.perform(get("/admin/report/top10" + query))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        verifyNoInteractions(orderDetailMapper);
+    }
+
+    @Test
+    void top10ReturnFrontendCompatibleNameAndNumberLists() throws Exception {
+        when(orderDetailMapper.getSalesTop10(any(), any(), any())).thenReturn(Arrays.asList(
+                GoodsSalesDTO.builder().name("鱼香肉丝").number(12).build(),
+                GoodsSalesDTO.builder().name("宫保鸡丁").number(8).build()));
+
+        mvc.perform(get("/admin/report/top10")
+                        .param("begin", "2026-10-13").param("end", "2026-10-13"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(1))
+                .andExpect(jsonPath("$.data.nameList").value("鱼香肉丝,宫保鸡丁"))
+                .andExpect(jsonPath("$.data.numberList").value("12,8"));
+    }
+
+    @Test
+    void top10ReturnsEmptyListsWhenNoSalesMatch() throws Exception {
+        mvc.perform(get("/admin/report/top10")
+                        .param("begin", "2026-10-13").param("end", "2026-10-13"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(1))
+                .andExpect(jsonPath("$.data.nameList").value(""))
+                .andExpect(jsonPath("$.data.numberList").value(""));
     }
 }
