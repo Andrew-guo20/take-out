@@ -9,10 +9,13 @@ import com.sky.context.BaseContext;
 import com.sky.dto.EmployeeDTO;
 import com.sky.dto.EmployeeLoginDTO;
 import com.sky.dto.EmployeePageQueryDTO;
+import com.sky.dto.PasswordEditDTO;
 import com.sky.entity.Employee;
 import com.sky.exception.AccountLockedException;
 import com.sky.exception.AccountNotFoundException;
 import com.sky.exception.PasswordErrorException;
+import com.sky.exception.PasswordEditFailedException;
+import com.sky.exception.UserNotLoginException;
 import com.sky.mapper.EmployeeMapper;
 import com.sky.result.PageResult;
 import com.sky.service.EmployeeService;
@@ -20,6 +23,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,6 +33,30 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Autowired
     private EmployeeMapper employeeMapper;
+
+    @Override
+    public void editPassword(PasswordEditDTO passwordEditDTO) {
+        Long employeeId = BaseContext.getCurrentId();
+        if (employeeId == null) {
+            throw new UserNotLoginException(MessageConstant.USER_NOT_LOGIN);
+        }
+        if ((passwordEditDTO.getEmpId() != null && !employeeId.equals(passwordEditDTO.getEmpId()))
+                || !StringUtils.hasText(passwordEditDTO.getOldPassword())
+                || passwordEditDTO.getNewPassword() == null
+                || !passwordEditDTO.getNewPassword().matches("[0-9A-Za-z]{6,20}")) {
+            throw new PasswordEditFailedException(MessageConstant.PASSWORD_EDIT_FAILED);
+        }
+        Employee employee = Employee.builder()
+                .id(employeeId)
+                .password(DigestUtils.md5DigestAsHex(passwordEditDTO.getNewPassword().getBytes()))
+                .updateTime(LocalDateTime.now())
+                .updateUser(employeeId)
+                .build();
+        String oldPassword = DigestUtils.md5DigestAsHex(passwordEditDTO.getOldPassword().getBytes());
+        if (employeeMapper.updatePassword(employee, oldPassword) == 0) {
+            throw new PasswordEditFailedException(MessageConstant.PASSWORD_EDIT_FAILED);
+        }
+    }
 
     /**
      * 员工登录

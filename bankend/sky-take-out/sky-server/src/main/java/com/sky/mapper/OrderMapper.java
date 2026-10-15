@@ -28,6 +28,12 @@ public interface OrderMapper {
     Orders getById(Long id);
 
     /**
+     * 在事务中锁定订单，串行处理接单、拒单和取消操作。
+     */
+    @Select("select * from orders where id = #{id} for update")
+    Orders getByIdForUpdate(Long id);
+
+    /**
      * 将截止时间之前下单、仍在派送中的订单更新为已完成。
      */
     void completeDeliveryOrder(@Param("orders") Orders orders,

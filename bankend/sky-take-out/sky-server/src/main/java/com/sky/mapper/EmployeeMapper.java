@@ -14,6 +14,11 @@ import org.apache.ibatis.annotations.Select;
 public interface EmployeeMapper {
 
     /**
+     * 仅在旧密码匹配且账号启用时更新密码。
+     */
+    int updatePassword(@Param("employee") Employee employee, @Param("oldPassword") String oldPassword);
+
+    /**
      * 根据用户名查询员工
      * @param username
      */

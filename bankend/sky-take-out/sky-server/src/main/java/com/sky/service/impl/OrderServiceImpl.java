@@ -8,6 +8,9 @@ import com.sky.dto.OrdersSubmitDTO;
 import com.alibaba.fastjson.JSONObject;
 import com.sky.dto.OrdersPaymentDTO;
 import com.sky.dto.OrdersPageQueryDTO;
+import com.sky.dto.OrdersCancelDTO;
+import com.sky.dto.OrdersConfirmDTO;
+import com.sky.dto.OrdersRejectionDTO;
 import com.sky.result.PageResult;
 import com.sky.entity.User;
 import com.sky.mapper.UserMapper;
@@ -33,6 +36,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.math.BigDecimal;
@@ -44,6 +48,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class OrderServiceImpl implements OrderService {
+
+    private static final BigDecimal TEST_PAYMENT_AMOUNT = new BigDecimal("0.01");
 
     @Autowired
     private OrderMapper orderMapper;
@@ -65,6 +71,83 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private WebSocketServer webSocketServer;
+
+    @Override
+    @Transactional
+    public void confirm(OrdersConfirmDTO ordersConfirmDTO) {
+        Orders orders = getOrderForUpdate(ordersConfirmDTO.getId());
+        if (!Orders.TO_BE_CONFIRMED.equals(orders.getStatus())
+                || !Orders.PAID.equals(orders.getPayStatus())) {
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
+        orderMapper.update(Orders.builder().id(orders.getId()).status(Orders.CONFIRMED).build());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void rejection(OrdersRejectionDTO ordersRejectionDTO) throws Exception {
+        if (!StringUtils.hasText(ordersRejectionDTO.getRejectionReason())) {
+            throw new OrderBusinessException("拒单原因不能为空");
+        }
+        Orders orders = getOrderForUpdate(ordersRejectionDTO.getId());
+        if (!Orders.TO_BE_CONFIRMED.equals(orders.getStatus())
+                || !Orders.PAID.equals(orders.getPayStatus())) {
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
+        cancelOrder(orders, null, ordersRejectionDTO.getRejectionReason().trim());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cancel(OrdersCancelDTO ordersCancelDTO) throws Exception {
+        if (!StringUtils.hasText(ordersCancelDTO.getCancelReason())) {
+            throw new OrderBusinessException("取消原因不能为空");
+        }
+        Orders orders = getOrderForUpdate(ordersCancelDTO.getId());
+        boolean unpaidOrder = Orders.PENDING_PAYMENT.equals(orders.getStatus())
+                && Orders.UN_PAID.equals(orders.getPayStatus());
+        boolean paidOrder = (Orders.TO_BE_CONFIRMED.equals(orders.getStatus())
+                || Orders.CONFIRMED.equals(orders.getStatus())
+                || Orders.DELIVERY_IN_PROGRESS.equals(orders.getStatus()))
+                && Orders.PAID.equals(orders.getPayStatus());
+        if (!unpaidOrder && !paidOrder) {
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
+        cancelOrder(orders, ordersCancelDTO.getCancelReason().trim(), null);
+    }
+
+    private Orders getOrderForUpdate(Long id) {
+        Orders orders = id == null ? null : orderMapper.getByIdForUpdate(id);
+        if (orders == null) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+        return orders;
+    }
+
+    private void cancelOrder(Orders orders, String cancelReason, String rejectionReason) throws Exception {
+        boolean paid = Orders.PAID.equals(orders.getPayStatus());
+        Orders cancelled = Orders.builder()
+                .id(orders.getId())
+                .status(Orders.CANCELLED)
+                .cancelReason(cancelReason)
+                .rejectionReason(rejectionReason)
+                .cancelTime(LocalDateTime.now())
+                .build();
+        if (paid) {
+            cancelled.setPayStatus(Orders.REFUND);
+        }
+        orderMapper.update(cancelled);
+
+        if (paid) {
+            // 固定退款单号保证重试幂等，金额与当前 0.01 元测试支付保持一致。
+            JSONObject refund = JSONObject.parseObject(weChatPayUtil.refund(
+                    orders.getNumber(), orders.getNumber(), TEST_PAYMENT_AMOUNT, TEST_PAYMENT_AMOUNT));
+            if (refund == null || (!"SUCCESS".equals(refund.getString("status"))
+                    && !"PROCESSING".equals(refund.getString("status")))) {
+                throw new OrderBusinessException("退款申请失败，请稍后重试");
+            }
+        }
+    }
 
     /**
      * 管理端订单条件分页查询，补充列表展示所需的菜品信息。
@@ -134,7 +217,7 @@ public class OrderServiceImpl implements OrderService {
         // 调用微信支付接口，生成预支付交易单
         JSONObject jsonObject = weChatPayUtil.pay(
                 ordersPaymentDTO.getOrderNumber(),// 商户订单号
-                new BigDecimal("0.01"),// 支付金额，单位 元
+                TEST_PAYMENT_AMOUNT,// 支付金额，单位 元
                 "苍穹外卖订单",// 商业描述
                 user.getOpenid());// 微信用户的openid
         if ("ORDERPAID".equals(jsonObject.getString("code"))) {

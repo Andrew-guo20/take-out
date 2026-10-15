@@ -13,6 +13,7 @@ sky-server/src/test/**
 !sky-server/src/test/java/com/sky/controller/user/OrderControllerTest.java
 !sky-server/src/test/java/com/sky/controller/admin/ReportControllerTest.java
 !sky-server/src/test/java/com/sky/controller/admin/OrderControllerTest.java
+!sky-server/src/test/java/com/sky/controller/admin/AdminOperationsTest.java
 !sky-server/src/test/java/com/sky/service/impl/ReportServiceImplTest.java
 !sky-server/src/test/java/com/sky/mapper/OrderMapperTurnoverTest.java
 !sky-server/src/test/java/com/sky/mapper/UserMapperStatisticsTest.java
@@ -21,3 +22,6 @@ sky-server/src/test/**
 # 本地开发配置包含真实密钥，不进版本库
 application-dev.yml
 take-out-learn.txt
+
+# Windows cache accidentally generated inside the project
+/%SystemDrive%/

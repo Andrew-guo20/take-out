@@ -3,10 +3,16 @@ package com.sky.service;
 import com.sky.dto.EmployeeDTO;
 import com.sky.dto.EmployeeLoginDTO;
 import com.sky.dto.EmployeePageQueryDTO;
+import com.sky.dto.PasswordEditDTO;
 import com.sky.entity.Employee;
 import com.sky.result.PageResult;
 
 public interface EmployeeService {
+
+    /**
+     * 校验旧密码后修改当前登录员工的密码。
+     */
+    void editPassword(PasswordEditDTO passwordEditDTO);
 
     /**
      * 员工登录

@@ -3,12 +3,30 @@ package com.sky.service;
 import com.sky.dto.OrdersSubmitDTO;
 import com.sky.dto.OrdersPaymentDTO;
 import com.sky.dto.OrdersPageQueryDTO;
+import com.sky.dto.OrdersCancelDTO;
+import com.sky.dto.OrdersConfirmDTO;
+import com.sky.dto.OrdersRejectionDTO;
 import com.sky.result.PageResult;
 import com.sky.vo.OrderPaymentVO;
 import com.sky.vo.OrderSubmitVO;
 import com.sky.vo.OrderStatisticsVO;
 
 public interface OrderService {
+
+    /**
+     * 接受已支付、待接单的订单。
+     */
+    void confirm(OrdersConfirmDTO ordersConfirmDTO);
+
+    /**
+     * 拒绝待接单的订单并申请退款。
+     */
+    void rejection(OrdersRejectionDTO ordersRejectionDTO) throws Exception;
+
+    /**
+     * 取消未完成的订单，已支付时申请退款。
+     */
+    void cancel(OrdersCancelDTO ordersCancelDTO) throws Exception;
 
     /**
      * 管理端订单条件分页查询。
