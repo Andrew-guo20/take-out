@@ -73,6 +73,44 @@ public class OrderServiceImpl implements OrderService {
     private WebSocketServer webSocketServer;
 
     @Override
+    public OrderVO details(Long id) {
+        Orders orders = orderMapper.getById(id);
+        if (orders == null) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+        OrderVO orderVO = new OrderVO();
+        BeanUtils.copyProperties(orders, orderVO);
+        orderVO.setOrderDetailList(orderDetailMapper.getByOrderId(id));
+        return orderVO;
+    }
+
+    @Override
+    @Transactional
+    public void delivery(Long id) {
+        Orders orders = getOrderForUpdate(id);
+        if (!Orders.CONFIRMED.equals(orders.getStatus())
+                || !Orders.PAID.equals(orders.getPayStatus())) {
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
+        orderMapper.update(Orders.builder().id(id).status(Orders.DELIVERY_IN_PROGRESS).build());
+    }
+
+    @Override
+    @Transactional
+    public void complete(Long id) {
+        Orders orders = getOrderForUpdate(id);
+        if (!Orders.DELIVERY_IN_PROGRESS.equals(orders.getStatus())
+                || !Orders.PAID.equals(orders.getPayStatus())) {
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
+        orderMapper.update(Orders.builder()
+                .id(id)
+                .status(Orders.COMPLETED)
+                .deliveryTime(LocalDateTime.now())
+                .build());
+    }
+
+    @Override
     @Transactional
     public void confirm(OrdersConfirmDTO ordersConfirmDTO) {
         Orders orders = getOrderForUpdate(ordersConfirmDTO.getId());

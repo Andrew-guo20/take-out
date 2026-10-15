@@ -10,8 +10,24 @@ import com.sky.result.PageResult;
 import com.sky.vo.OrderPaymentVO;
 import com.sky.vo.OrderSubmitVO;
 import com.sky.vo.OrderStatisticsVO;
+import com.sky.vo.OrderVO;
 
 public interface OrderService {
+
+    /**
+     * 查询订单及菜品明细。
+     */
+    OrderVO details(Long id);
+
+    /**
+     * 派送已支付、已接单的订单。
+     */
+    void delivery(Long id);
+
+    /**
+     * 完成已支付、派送中的订单并记录送达时间。
+     */
+    void complete(Long id);
 
     /**
      * 接受已支付、待接单的订单。

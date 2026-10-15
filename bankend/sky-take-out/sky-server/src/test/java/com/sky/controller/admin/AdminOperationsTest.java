@@ -5,7 +5,9 @@ import com.sky.context.BaseContext;
 import com.sky.dto.EmployeeLoginDTO;
 import com.sky.exception.PasswordErrorException;
 import com.sky.handler.GlobalExceptionHandler;
+import com.sky.json.JacksonObjectMapper;
 import com.sky.mapper.EmployeeMapper;
+import com.sky.mapper.OrderDetailMapper;
 import com.sky.mapper.OrderMapper;
 import com.sky.service.impl.EmployeeServiceImpl;
 import com.sky.service.impl.OrderServiceImpl;
@@ -24,6 +26,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.mybatis.spring.transaction.SpringManagedTransactionFactory;
 import org.springframework.aop.framework.ProxyFactory;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -60,6 +63,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -81,8 +85,12 @@ class AdminOperationsTest {
         jdbc = new JdbcTemplate(dataSource);
         jdbc.execute("create table orders (id bigint primary key, number varchar(32), status int, "
                 + "pay_status int, amount decimal(10,2), cancel_reason varchar(255), "
-                + "rejection_reason varchar(255), cancel_time timestamp)");
+                + "rejection_reason varchar(255), cancel_time timestamp, delivery_time timestamp, "
+                + "phone varchar(11), address varchar(255), consignee varchar(32), order_time timestamp)");
         jdbc.update("insert into orders (id, number, status, pay_status, amount) values (42, 'order-42', 2, 1, 99.99)");
+        jdbc.execute("create table order_detail (id bigint primary key, order_id bigint, name varchar(32), "
+                + "dish_id bigint, setmeal_id bigint, dish_flavor varchar(255), number int, "
+                + "amount decimal(10,2), image varchar(255))");
         jdbc.execute("create table employee (id bigint primary key, username varchar(32), password varchar(32), "
                 + "status int, update_time timestamp, update_user bigint)");
         String password = DigestUtils.md5DigestAsHex("Old123".getBytes());
@@ -92,7 +100,8 @@ class AdminOperationsTest {
         Configuration configuration = new Configuration(new Environment("test",
                 new SpringManagedTransactionFactory(), dataSource));
         configuration.setMapUnderscoreToCamelCase(true);
-        for (String resource : new String[]{"mapper/OrderMapper.xml", "mapper/EmployeeMapper.xml"}) {
+        for (String resource : new String[]{"mapper/OrderMapper.xml", "mapper/OrderDetailMapper.xml",
+                "mapper/EmployeeMapper.xml"}) {
             try (InputStream xml = getClass().getResourceAsStream("/" + resource)) {
                 new XMLMapperBuilder(xml, configuration, resource, configuration.getSqlFragments()).parse();
             }
@@ -100,6 +109,7 @@ class AdminOperationsTest {
         SqlSessionTemplate session = new SqlSessionTemplate(new SqlSessionFactoryBuilder().build(configuration));
         OrderServiceImpl orderService = new OrderServiceImpl();
         ReflectionTestUtils.setField(orderService, "orderMapper", session.getMapper(OrderMapper.class));
+        ReflectionTestUtils.setField(orderService, "orderDetailMapper", session.getMapper(OrderDetailMapper.class));
         ReflectionTestUtils.setField(orderService, "weChatPayUtil", weChatPayUtil);
         ProxyFactory proxy = new ProxyFactory(orderService);
         proxy.addAdvice(new TransactionInterceptor(new DataSourceTransactionManager(dataSource),
@@ -110,7 +120,8 @@ class AdminOperationsTest {
         EmployeeController employeeController = new EmployeeController();
         ReflectionTestUtils.setField(employeeController, "employeeService", employeeService);
         mvc = MockMvcBuilders.standaloneSetup(orderController, employeeController)
-                .setControllerAdvice(new GlobalExceptionHandler()).build();
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .setMessageConverters(new MappingJackson2HttpMessageConverter(new JacksonObjectMapper())).build();
         when(weChatPayUtil.refund(anyString(), anyString(), any(), any()))
                 .thenReturn("{\"status\":\"SUCCESS\"}");
     }
@@ -129,6 +140,134 @@ class AdminOperationsTest {
         assertEquals(3, order().get("status"));
         orderAction("confirm", "{\"id\":42}").andExpect(jsonPath("$.code").value(0));
         verifyNoInteractions(weChatPayUtil);
+    }
+
+    @Test
+    void detailsReturnsOrderSnapshotAndOnlyItsOwnItemsInStableOrder() throws Exception {
+        jdbc.update("update orders set phone='13800138000', address='Test address', consignee='Alice', "
+                + "order_time='2026-10-15 12:30:00' where id=42");
+        jdbc.update("insert into order_detail values "
+                + "(2, 42, 'Meal', null, 8, null, 1, 20.00, '/meal.png'), "
+                + "(1, 42, 'Fish', 7, null, 'Spicy', 2, 39.99, '/fish.png'), "
+                + "(3, 99, 'Other', 9, null, null, 1, 10.00, '/other.png')");
+        mvc.perform(get("/admin/order/details/42"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(1))
+                .andExpect(jsonPath("$.data.id").value(42))
+                .andExpect(jsonPath("$.data.number").value("order-42"))
+                .andExpect(jsonPath("$.data.status").value(2))
+                .andExpect(jsonPath("$.data.payStatus").value(1))
+                .andExpect(jsonPath("$.data.amount").value(99.99))
+                .andExpect(jsonPath("$.data.phone").value("13800138000"))
+                .andExpect(jsonPath("$.data.address").value("Test address"))
+                .andExpect(jsonPath("$.data.consignee").value("Alice"))
+                .andExpect(jsonPath("$.data.orderTime").value("2026-10-15 12:30"))
+                .andExpect(jsonPath("$.data.orderDetailList.length()").value(2))
+                .andExpect(jsonPath("$.data.orderDetailList[0].name").value("Fish"))
+                .andExpect(jsonPath("$.data.orderDetailList[0].dishId").value(7))
+                .andExpect(jsonPath("$.data.orderDetailList[0].dishFlavor").value("Spicy"))
+                .andExpect(jsonPath("$.data.orderDetailList[0].number").value(2))
+                .andExpect(jsonPath("$.data.orderDetailList[0].amount").value(39.99))
+                .andExpect(jsonPath("$.data.orderDetailList[0].image").value("/fish.png"))
+                .andExpect(jsonPath("$.data.orderDetailList[1].name").value("Meal"))
+                .andExpect(jsonPath("$.data.orderDetailList[1].setmealId").value(8));
+    }
+
+    @Test
+    void detailsReturnsEmptyListForOrderWithoutItems() throws Exception {
+        mvc.perform(get("/admin/order/details/42"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(1))
+                .andExpect(jsonPath("$.data.orderDetailList").isEmpty());
+    }
+
+    @Test
+    void detailsRejectsMissingOrder() throws Exception {
+        mvc.perform(get("/admin/order/details/999"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.msg").value(MessageConstant.ORDER_NOT_FOUND));
+    }
+
+    @Test
+    void paidOrderCanBeConfirmedDeliveredAndCompletedWithoutRepeatingOrCancelling() throws Exception {
+        orderAction("confirm", "{\"id\":42}").andExpect(jsonPath("$.code").value(1));
+        orderAction("delivery/42", "").andExpect(jsonPath("$.code").value(1));
+        Map<String, Object> delivering = order();
+        assertEquals(4, delivering.get("status"));
+        assertNull(delivering.get("delivery_time"));
+        orderAction("delivery/42", "").andExpect(jsonPath("$.code").value(0));
+        assertEquals(delivering, order());
+
+        orderAction("complete/42", "").andExpect(jsonPath("$.code").value(1));
+        Map<String, Object> completed = order();
+        assertEquals(5, completed.get("status"));
+        assertEquals(1, completed.get("pay_status"));
+        assertEquals(new BigDecimal("99.99"), completed.get("amount"));
+        assertNotNull(completed.get("delivery_time"));
+        orderAction("complete/42", "").andExpect(jsonPath("$.code").value(0));
+        orderAction("cancel", "{\"id\":42,\"cancelReason\":\"customer request\"}")
+                .andExpect(jsonPath("$.code").value(0));
+        assertEquals(completed, order());
+        verifyNoInteractions(weChatPayUtil);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"delivery,1,0", "delivery,2,1", "delivery,4,1", "delivery,5,1", "delivery,6,2",
+            "delivery,3,0", "delivery,3,2", "complete,1,0", "complete,2,1", "complete,3,1",
+            "complete,5,1", "complete,6,2", "complete,4,0", "complete,4,2"})
+    void deliveryAndCompletionRejectInvalidStatesWithoutChangingOrder(String action, int state, int payState)
+            throws Exception {
+        jdbc.update("update orders set status=?, pay_status=?, delivery_time='2026-10-01 12:00:00' where id=42",
+                state, payState);
+        Map<String, Object> original = order();
+        orderAction(action + "/42", "")
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.msg").value(MessageConstant.ORDER_STATUS_ERROR));
+        assertEquals(original, order());
+        verifyNoInteractions(weChatPayUtil);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"delivery", "complete"})
+    void deliveryAndCompletionRejectMissingOrder(String action) throws Exception {
+        orderAction(action + "/999", "")
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.msg").value(MessageConstant.ORDER_NOT_FOUND));
+        verifyNoInteractions(weChatPayUtil);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"delivery,3", "complete,4"})
+    void concurrentDeliveryOrCompletionCannotOverwriteCancellation(String action, int state) throws Exception {
+        jdbc.update("update orders set status=? where id=42", state);
+        CountDownLatch refundStarted = new CountDownLatch(1);
+        CountDownLatch finishRefund = new CountDownLatch(1);
+        when(weChatPayUtil.refund(anyString(), anyString(), any(), any())).thenAnswer(invocation -> {
+            refundStarted.countDown();
+            assertTrue(finishRefund.await(5, TimeUnit.SECONDS));
+            return "{\"status\":\"SUCCESS\"}";
+        });
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<ResultActions> cancellation = executor.submit(() -> orderAction("cancel",
+                    "{\"id\":42,\"cancelReason\":\"customer request\"}"));
+            assertTrue(refundStarted.await(5, TimeUnit.SECONDS));
+            Future<ResultActions> transition = executor.submit(() -> orderAction(action + "/42", ""));
+            assertThrows(TimeoutException.class, () -> transition.get(200, TimeUnit.MILLISECONDS));
+            finishRefund.countDown();
+            cancellation.get(5, TimeUnit.SECONDS).andExpect(jsonPath("$.code").value(1));
+            transition.get(5, TimeUnit.SECONDS).andExpect(jsonPath("$.code").value(0))
+                    .andExpect(jsonPath("$.msg").value(MessageConstant.ORDER_STATUS_ERROR));
+            assertEquals(6, order().get("status"));
+            assertEquals(2, order().get("pay_status"));
+            assertNull(order().get("delivery_time"));
+            verify(weChatPayUtil, times(1)).refund(anyString(), anyString(), any(), any());
+        } finally {
+            finishRefund.countDown();
+            executor.shutdownNow();
+            assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+        }
     }
 
     @ParameterizedTest
