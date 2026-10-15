@@ -3,6 +3,7 @@ package com.sky.service.impl;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.sky.constant.MessageConstant;
+import com.sky.constant.StatusConstant;
 import com.sky.context.BaseContext;
 import com.sky.dto.OrdersSubmitDTO;
 import com.alibaba.fastjson.JSONObject;
@@ -17,15 +18,19 @@ import com.sky.mapper.UserMapper;
 import com.sky.utils.WeChatPayUtil;
 import com.sky.vo.OrderPaymentVO;
 import com.sky.entity.AddressBook;
+import com.sky.entity.Dish;
 import com.sky.entity.OrderDetail;
 import com.sky.entity.Orders;
+import com.sky.entity.Setmeal;
 import com.sky.entity.ShoppingCart;
 import com.sky.exception.AddressBookBusinessException;
 import com.sky.exception.OrderBusinessException;
 import com.sky.exception.ShoppingCartBusinessException;
 import com.sky.mapper.AddressBookMapper;
+import com.sky.mapper.DishMapper;
 import com.sky.mapper.OrderDetailMapper;
 import com.sky.mapper.OrderMapper;
+import com.sky.mapper.SetmealMapper;
 import com.sky.mapper.ShoppingCartMapper;
 import com.sky.service.OrderService;
 import com.sky.vo.OrderSubmitVO;
@@ -64,6 +69,12 @@ public class OrderServiceImpl implements OrderService {
     private ShoppingCartMapper shoppingCartMapper;
 
     @Autowired
+    private DishMapper dishMapper;
+
+    @Autowired
+    private SetmealMapper setmealMapper;
+
+    @Autowired
     private UserMapper userMapper;
 
     @Autowired
@@ -73,14 +84,117 @@ public class OrderServiceImpl implements OrderService {
     private WebSocketServer webSocketServer;
 
     @Override
+    public PageResult historyOrders(OrdersPageQueryDTO ordersPageQueryDTO) {
+        ordersPageQueryDTO.setUserId(getCurrentUserId());
+        if (ordersPageQueryDTO.getPage() < 1 || ordersPageQueryDTO.getPageSize() < 1) {
+            throw new OrderBusinessException("分页参数必须大于0");
+        }
+        PageHelper.startPage(ordersPageQueryDTO.getPage(), ordersPageQueryDTO.getPageSize());
+        Page<Orders> page = orderMapper.pageQuery(ordersPageQueryDTO);
+        List<OrderVO> records = new ArrayList<>();
+        for (Orders orders : page.getResult()) {
+            records.add(toOrderVO(orders));
+        }
+        return new PageResult(page.getTotal(), records);
+    }
+
+    @Override
+    public OrderVO userDetails(Long id) {
+        return toOrderVO(getUserOrder(id));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void userCancel(Long id) throws Exception {
+        Long userId = getCurrentUserId();
+        Orders orders = getOrderForUpdate(id);
+        if (!userId.equals(orders.getUserId())) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+        boolean unpaidOrder = Orders.PENDING_PAYMENT.equals(orders.getStatus())
+                && Orders.UN_PAID.equals(orders.getPayStatus());
+        boolean waitingOrder = Orders.TO_BE_CONFIRMED.equals(orders.getStatus())
+                && Orders.PAID.equals(orders.getPayStatus());
+        if (!unpaidOrder && !waitingOrder) {
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
+        cancelOrder(orders, "用户主动取消", null);
+    }
+
+    @Override
+    @Transactional
+    public void repetition(Long id) {
+        Orders orders = getUserOrder(id);
+        List<OrderDetail> details = orderDetailMapper.getByOrderId(id);
+        if (details.isEmpty()) {
+            throw new OrderBusinessException("订单明细为空，无法再来一单");
+        }
+        for (OrderDetail detail : details) {
+            ShoppingCart cart = ShoppingCart.builder()
+                    .userId(orders.getUserId())
+                    .dishId(detail.getDishId())
+                    .setmealId(detail.getSetmealId())
+                    .dishFlavor(detail.getDishFlavor())
+                    .number(detail.getNumber())
+                    .createTime(LocalDateTime.now())
+                    .build();
+            if (detail.getDishId() != null) {
+                Dish dish = dishMapper.getById(detail.getDishId());
+                if (dish == null || !StatusConstant.ENABLE.equals(dish.getStatus())) {
+                    throw new ShoppingCartBusinessException("商品已停售或不存在：" + detail.getName());
+                }
+                cart.setName(dish.getName());
+                cart.setAmount(dish.getPrice());
+                cart.setImage(dish.getImage());
+            } else {
+                Setmeal setmeal = setmealMapper.getById(detail.getSetmealId());
+                if (setmeal == null || !StatusConstant.ENABLE.equals(setmeal.getStatus())) {
+                    throw new ShoppingCartBusinessException("商品已停售或不存在：" + detail.getName());
+                }
+                cart.setName(setmeal.getName());
+                cart.setAmount(setmeal.getPrice());
+                cart.setImage(setmeal.getImage());
+            }
+            ShoppingCart existing = shoppingCartMapper.getByProduct(cart);
+            if (existing == null) {
+                shoppingCartMapper.insert(cart);
+            } else {
+                cart.setId(existing.getId());
+                shoppingCartMapper.addNumber(cart);
+            }
+        }
+    }
+
+    private Long getCurrentUserId() {
+        Long userId = BaseContext.getCurrentId();
+        if (userId == null) {
+            throw new OrderBusinessException(MessageConstant.USER_NOT_LOGIN);
+        }
+        return userId;
+    }
+
+    private Orders getUserOrder(Long id) {
+        Long userId = getCurrentUserId();
+        Orders orders = orderMapper.getById(id);
+        if (orders == null || !userId.equals(orders.getUserId())) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+        return orders;
+    }
+
+    @Override
     public OrderVO details(Long id) {
         Orders orders = orderMapper.getById(id);
         if (orders == null) {
             throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
         }
+        return toOrderVO(orders);
+    }
+
+    private OrderVO toOrderVO(Orders orders) {
         OrderVO orderVO = new OrderVO();
         BeanUtils.copyProperties(orders, orderVO);
-        orderVO.setOrderDetailList(orderDetailMapper.getByOrderId(id));
+        orderVO.setOrderDetailList(orderDetailMapper.getByOrderId(orders.getId()));
         return orderVO;
     }
 

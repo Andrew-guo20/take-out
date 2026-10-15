@@ -47,6 +47,14 @@ public interface ShoppingCartMapper {
     void incrementNumber(Long id);
 
     /**
+     * 合并再来一单的数量，并更新为商品当前信息。
+     */
+    @Update("update shopping_cart set number = number + #{number}, " +
+            "name = #{name}, amount = #{amount}, image = #{image} " +
+            "where id = #{id} and user_id = #{userId}")
+    void addNumber(ShoppingCart shoppingCart);
+
+    /**
      * 插入一条新的购物车记录，amount 保存商品单价。
      */
     @Insert("insert into shopping_cart " +

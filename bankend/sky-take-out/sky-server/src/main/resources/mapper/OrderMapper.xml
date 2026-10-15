@@ -5,6 +5,9 @@
     <select id="pageQuery" resultType="com.sky.entity.Orders">
         select * from orders
         <where>
+            <if test="userId != null">
+                and user_id = #{userId}
+            </if>
             <if test="number != null and number != ''">
                 and number like concat('%', #{number}, '%')
             </if>

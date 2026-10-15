@@ -15,6 +15,26 @@ import com.sky.vo.OrderVO;
 public interface OrderService {
 
     /**
+     * 分页查询当前用户的订单及菜品明细。
+     */
+    PageResult historyOrders(OrdersPageQueryDTO ordersPageQueryDTO);
+
+    /**
+     * 查询当前用户的订单详情。
+     */
+    OrderVO userDetails(Long id);
+
+    /**
+     * 用户取消待付款或待接单订单，已支付时申请退款。
+     */
+    void userCancel(Long id) throws Exception;
+
+    /**
+     * 将历史订单中的商品按当前价格加入当前用户的购物车。
+     */
+    void repetition(Long id);
+
+    /**
      * 查询订单及菜品明细。
      */
     OrderVO details(Long id);
